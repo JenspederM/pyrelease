@@ -104,8 +104,10 @@ class GitRepository:
         """
         # Define the pretty format for git log output.
         # See more: https://git-scm.com/docs/pretty-formats
+        remote_url = self.get_remote_url()
         commit_parts = [
             "{",
+            f'"remote_url": "{remote_url}",',
             '"abbr_hash": "%h",',
             '"commit_hash": "%H",',
             '"message": "%s",',
@@ -141,6 +143,7 @@ class GitRepository:
 
 @dataclass
 class GitCommit:
+    remote_url: str = ""
     abbr_hash: str = ""
     commit_hash: str = ""
     message: str = ""
