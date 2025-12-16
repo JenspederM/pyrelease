@@ -15,9 +15,9 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - uses: jdx/mise-action@v3
     - name: "Run Action"
-      shell: "python"
+      shell: "bash"
       run: |
-        from release import main
-        main()
-      working-directory: ".github/actions/pyrelease"
+        uv run pyrelease \
+          --path .

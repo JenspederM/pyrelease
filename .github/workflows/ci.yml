@@ -9,12 +9,12 @@ on:
             - main
 
 jobs:
-    test:
+    test-action:
         runs-on: ubuntu-latest
-        name: Test
+        name: Test Action
         steps:
             - uses: actions/checkout@v6
-            - uses: jdx/mise-action@v3
             - name: Run action
-              run: |
-                  uv run pyrelease --path .
+              uses: ./
+              with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
