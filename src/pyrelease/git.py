@@ -102,6 +102,8 @@ class GitRepository:
         Returns:
             list[GitCommit]: List of commits since the specified commit
         """
+        # Define the pretty format for git log output.
+        # See more: https://git-scm.com/docs/pretty-formats
         commit_parts = [
             "{",
             '"abbr_hash": "%h",',
@@ -134,7 +136,6 @@ class GitRepository:
         for commit in result.stdout.strip().split("\n"):
             git_commit = GitCommit(**json.loads(commit.strip()))
             commits.append(git_commit)
-
         return commits
 
 
@@ -149,10 +150,3 @@ class GitCommit:
     committer_name: str = ""
     committer_email: str = ""
     committer_date: str = ""
-
-
-if __name__ == "__main__":
-    repo = GitRepository(".")
-    commits = repo.get_commits_since()
-    for commit in commits:
-        print(commit)
