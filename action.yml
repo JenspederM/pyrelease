@@ -1,0 +1,23 @@
+name: "Python Release Action"
+description: "An action to release Python packages."
+inputs:
+  github-token:
+    description: "GitHub token for authentication"
+    required: true
+    default: "${{ github.token }}"
+outputs:
+  old-version:
+    description: "Old version"
+    value: ${{ steps.set-version.outputs.old-version }}
+  new-version:
+    description: "New version"
+    value: ${{ steps.set-version.outputs.new-version }}
+runs:
+  using: "composite"
+  steps:
+    - name: "Run Action"
+      shell: "python"
+      run: |
+        from release import main
+        main()
+      working-directory: ".github/actions/pyrelease"
