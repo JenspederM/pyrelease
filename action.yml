@@ -1,6 +1,18 @@
 name: "Python Release Action"
 description: "An action to release Python packages."
 inputs:
+  command:
+    description: "The command to run (e.g., 'tag' or 'changelog')"
+    required: false
+    default: "changelog"
+  changelog-commit-format:
+    description: "Format string for each commit in the changelog"
+    required: false
+    default: "- {message} ([{abbr_hash}]({remote_url}/{abbr_hash}))"
+  changelog-output:
+    description: "Output file for the changelog (prints to stdout if not provided)"
+    required: false
+    default: ""
   github-token:
     description: "GitHub token for authentication"
     required: true
@@ -18,6 +30,17 @@ runs:
     - uses: jdx/mise-action@v3
     - name: "Run Action"
       shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        uv run pyrelease \
-          --path .
+        if [ "${{ inputs.command }}" = "changelog" ]; then
+          uv run pyrelease changelog \
+            --path . \
+            --commit-format "${{ inputs.changelog-commit-format }}" \
+            --output "${{ inputs.changelog-output }}"
+        elif [ "${{ inputs.command }}" = "tag" ]; then
+          uv run pyrelease tag --message "Release new version" --path .
+        else
+          echo "Unknown command: ${{ inputs.command }}"
+          exit 1
+        fi
