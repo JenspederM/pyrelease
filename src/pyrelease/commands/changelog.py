@@ -25,6 +25,12 @@ def register(subparsers: _SubParsersAction):
         help="Format string for each commit in the changelog",
     )
     parser.add_argument(
+        "--silent",
+        action="store_true",
+        help="Suppress output to stdout",
+        default=False,
+    )
+    parser.add_argument(
         "--output",
         type=str,
         required=False,
@@ -37,11 +43,11 @@ def execute(args: argparse.Namespace):
     git = GitRepository(args.path)
     commits = git.get_commits_since(args.commit or "origin/main")
     changelog = generate_changelog(git, commits, args.commit_format)
+    if not args.silent:
+        print(changelog)
     if args.output:
         with open(args.output, "w") as f:
             f.write(changelog)
-    else:
-        print(changelog)
 
 
 def format_commits(commits: list[GitCommit], commit_format: str) -> list[str]:

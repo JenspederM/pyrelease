@@ -35,10 +35,9 @@ def main():
     parser, cli_commands = create_parser_from_files(commands_path)
     args = parser.parse_args()
     if args.command in cli_commands:
-        print(f"Executing command: {args.command}")
         command_module = cli_commands[args.command]
         if hasattr(command_module, "execute"):
-            command_module.execute()
+            command_module.execute(args)
         else:
             raise ImportError(
                 f"The module {args.command} does not have an execute function."
