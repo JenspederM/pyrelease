@@ -134,8 +134,11 @@ class GitRepository:
             text=True,
             cwd=self.path,
         )
+        commit_strings = [
+            line for line in result.stdout.strip().split("\n") if line.strip()
+        ]
         commits = []
-        for commit in result.stdout.strip().split("\n"):
+        for commit in commit_strings:
             git_commit = GitCommit(**json.loads(commit.strip()))
             commits.append(git_commit)
         return commits
