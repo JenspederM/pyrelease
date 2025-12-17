@@ -3,9 +3,7 @@ name = "pyrelease"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-authors = [
-    { name = "Jens Peder Meldgaard", email = "jenspederm@gmail.com" }
-]
+authors = [{ name = "Jens Peder Meldgaard", email = "jenspederm@gmail.com" }]
 requires-python = ">=3.11"
 dependencies = []
 
@@ -17,8 +15,9 @@ requires = ["uv_build>=0.9.15,<0.10.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
-    "ruff>=0.14.9",
-]
+dev = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "ruff>=0.14.9"]
+
+[tool.pyrelease]
+tag-format = "v{version}"
+commit-format = "- {message} ([{abbr_hash}]({abbr_hash}))"
+changelog-format = "{version} Changes\n=========================\n\n{changes}"

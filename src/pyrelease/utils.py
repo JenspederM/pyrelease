@@ -4,6 +4,53 @@ import json
 import subprocess
 import tomllib
 from dataclasses import dataclass
+from pathlib import Path
+
+
+def read_pyrelease_config(path: str) -> list[str]:
+    """Read pyrelease configuration from pyproject.toml and .pyrelease.toml files.
+
+    Args:
+        path (str): Path
+
+    Returns:
+        list[str]: List of command-line arguments derived from the configuration
+    """
+    pyproject_path = Path(f"{path}/pyproject.toml")
+    if not pyproject_path.exists():
+        raise FileNotFoundError(f"pyproject.toml not found in path: {path}")
+    with open(pyproject_path, "rb") as f:
+        pyproject_data = tomllib.load(f)
+    project_name = pyproject_data.get("project", {}).get("name")
+    project_version = pyproject_data.get("project", {}).get("version")
+    if not project_name or not project_version:
+        raise ValueError(
+            "project.name and project.version must be defined in pyproject.toml"
+        )
+    pyrelease_config = pyproject_data.get("tool", {}).get("pyrelease", {})
+    dot_pyrelease_path = Path(f"{path}/.pyrelease.toml")
+    if dot_pyrelease_path.exists():
+        with open(dot_pyrelease_path, "rb") as f:
+            dot_pyrelease_data = tomllib.load(f)
+        pyrelease_config.update(dot_pyrelease_data.get("pyrelease", {}))
+    pyrelease_config["project-name"] = project_name
+    pyrelease_config["project-version"] = project_version
+    return [
+        f"--{key}={value}"
+        for key, value in pyrelease_config.items()
+        if value is not None
+    ]
+
+
+def get_version_from_pyproject() -> str:
+    """Retrieve the version from pyproject.toml.
+
+    Returns:
+        str: Version string
+    """
+    with open("pyproject.toml", "rb") as f:
+        pyproject_data = tomllib.load(f)
+    return pyproject_data["project"]["version"]
 
 
 class GitRepository:
@@ -33,18 +80,29 @@ class GitRepository:
         except subprocess.CalledProcessError:
             return False
 
-    def create_version_tag(self, message: str = "") -> None:
+    def create_version_tag(
+        self, version: str, message: str = "", format: str | None = None
+    ) -> str:
         """Create a new version tag in the git repository.
 
         Args:
+            version (str): Version string for the tag
             message (str): Tag message
+            format (str | None): Format string for the tag name
+
+        Returns:
+            str: Created tag name
         """
-        version = get_version_from_pyproject()
-        tag_cmd = ["git", "tag", "-a", f"v{version}"]
+        if format:
+            version = format.format(version=version)
+        else:
+            version = f"v{version}"
+        tag_cmd = ["git", "tag", "-a", version]
         if not message:
             message = input(f"Enter tag message for version {version}: ")
             tag_cmd.extend(["-m", message])
         subprocess.run(tag_cmd, check=True, cwd=self.path)
+        return version
 
     def get_latest_tag(self) -> str | None:
         """Get the latest git tag in the repository.
@@ -156,14 +214,3 @@ class GitCommit:
     committer_name: str = ""
     committer_email: str = ""
     committer_date: str = ""
-
-
-def get_version_from_pyproject() -> str:
-    """Retrieve the version from pyproject.toml.
-
-    Returns:
-        str: Version string
-    """
-    with open("pyproject.toml", "rb") as f:
-        pyproject_data = tomllib.load(f)
-    return pyproject_data["project"]["version"]

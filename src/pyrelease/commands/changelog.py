@@ -15,34 +15,40 @@ def register(subparsers: _SubParsersAction):
     parser.add_argument(
         "--commit",
         type=str,
-        required=False,
         help="Commit hash to get commits since",
+        required=False,
+    )
+    parser.add_argument(
+        "--changelog-format",
+        type=str,
+        help="Format string for the changelog",
+        default="{version} Changelog\n=========================\n{changes}",
     )
     parser.add_argument(
         "--commit-format",
         type=str,
-        default=DEFAULT_COMMIT_FORMAT,
         help="Format string for each commit in the changelog",
-    )
-    parser.add_argument(
-        "--silent",
-        action="store_true",
-        help="Suppress output to stdout",
-        default=False,
+        default=DEFAULT_COMMIT_FORMAT,
     )
     parser.add_argument(
         "--output",
         type=str,
-        required=False,
         help="Output file for the changelog (prints to stdout if not provided)",
+        required=False,
     )
     return parser
 
 
 def execute(args: argparse.Namespace):
     git = GitRepository(args.path)
-    commits = git.get_commits_since(args.commit or "origin/main")
-    changelog = generate_changelog(git, commits, args.commit_format)
+    version = git.get_latest_tag()
+    changes = git.get_commits_since(args.commit or "origin/main")
+    if all(isinstance(change, GitCommit) for change in changes):
+        changes = format_commits(changes, args.commit_format)
+    changelog = args.changelog_format.format(
+        version=version,
+        changes="\n".join(changes),
+    )
     if not args.silent:
         print(changelog)
     if args.output:
@@ -50,7 +56,9 @@ def execute(args: argparse.Namespace):
             f.write(changelog)
 
 
-def format_commits(commits: list[GitCommit], commit_format: str) -> list[str]:
+def format_commits(
+    commits: list[GitCommit], commit_format: str | None = None
+) -> list[str]:
     """Format a list of GitCommit objects into a changelog string.
 
     Args:
@@ -60,11 +68,15 @@ def format_commits(commits: list[GitCommit], commit_format: str) -> list[str]:
     Returns:
         list[str]: Formatted commit strings
     """
-    return [commit_format.format(**asdict(commit)) for commit in commits]
+
+    format_str = commit_format or DEFAULT_COMMIT_FORMAT
+    return [format_str.format(**asdict(commit)) for commit in commits]
 
 
 def generate_changelog(
-    repo: GitRepository, changes: list[str] | list[GitCommit], commit_format: str
+    repo: GitRepository,
+    changes: list[str] | list[GitCommit],
+    commit_format: str | None = None,
 ) -> None:
     """Generate and print the changelog since the latest tag.
 
