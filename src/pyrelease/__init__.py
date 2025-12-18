@@ -62,17 +62,21 @@ def create_parser_from_files(
 
 
 def main(sys_args: list[str] | None = None):
-    commands_path = Path(__file__).parent / "commands"
-    parser, cli_commands = create_parser_from_files(commands_path)
-    sys_args = sys.argv[1:] if sys_args is None else sys_args
-    args = parser.parse_args(sys_args)
-    config_args = read_pyrelease_config(args.path)
-    if args.command in cli_commands:
-        command_executor, command_parser = cli_commands[args.command]
-        known_args, _ = command_parser.parse_known_args(config_args + sys_args)
-        command_executor(known_args)
-    else:
-        parser.print_help()
+    try:
+        commands_path = Path(__file__).parent / "commands"
+        parser, cli_commands = create_parser_from_files(commands_path)
+        sys_args = sys.argv[1:] if sys_args is None else sys_args
+        args = parser.parse_args(sys_args)
+        config_args = read_pyrelease_config(args.path)
+        if args.command in cli_commands:
+            command_executor, command_parser = cli_commands[args.command]
+            known_args, _ = command_parser.parse_known_args(config_args + sys_args)
+            command_executor(known_args)
+        else:
+            parser.print_help()
+    except SystemExit as e:
+        if e.code != 0:
+            raise e
 
 
 __all__ = ["main"]
