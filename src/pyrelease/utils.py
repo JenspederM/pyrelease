@@ -155,7 +155,8 @@ class GitRepository:
         """Get a list of commit messages since a specific commit.
 
         Args:
-            commit_id (str): Commit hash to get commits since, defaults to empty string (all commits)
+            commit_id (str): Commit hash to get commits since,
+                defaults to empty string (all commits)
 
         Returns:
             list[GitCommit]: List of commits since the specified commit

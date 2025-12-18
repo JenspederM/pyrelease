@@ -10,14 +10,50 @@ dependencies = []
 [project.scripts]
 pyrelease = "pyrelease:main"
 
+[dependency-groups]
+dev = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "ruff>=0.14.9"]
+
 [build-system]
 requires = ["uv_build>=0.9.15,<0.10.0"]
 build-backend = "uv_build"
 
-[dependency-groups]
-dev = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "ruff>=0.14.9"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyrelease"]
 
 [tool.pyrelease]
 tag-format = "v{version}"
 commit-format = "- {message} ([{abbr_hash}]({abbr_hash}))"
 changelog-format = "{version} Changes\n=========================\n\n{changes}"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    '--log-format="%(asctime)s %(levelname)s %(message)s"',
+    '--log-date-format="%Y-%m-%d %H:%M:%S"',
+    '--cov-report=term-missing',
+    '--cov-report=xml:coverage.xml',
+    '--junit-xml=coverage.junit.xml',
+    '--cov=pyrelease',
+    '--no-cov-on-fail',
+    '--cov-fail-under=70',
+    '--ignore-glob="develop-eggs/*"',
+    '-ra',
+    '-vv',
+    '-x',
+]
+
+[tool.ruff]
+line-length = 88
+show-fixes = true
+lint.select = [
+    "F",    # Pyflakes
+    "W",    # pycodestyle
+    "E",    # pycodestyle
+    "I",    # isort
+    "UP",   # pyupgrade
+    "PL",   # Pylint
+    "T201", # Print Statement
+]
+
+[tool.ruff.lint.per-file-ignores]
+"{tests,features}/*" = ["T201", "PLR2004", "PLR0915", "PLW1510"]

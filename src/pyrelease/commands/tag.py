@@ -24,7 +24,6 @@ def register(subparsers: _SubParsersAction):
 
 
 def execute(args: argparse.Namespace):
-    print(args)
     if not args.tag_format and not args.message:
         args.message = input("Enter tag message: ")
     git = GitRepository(args.path)

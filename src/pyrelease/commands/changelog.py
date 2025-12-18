@@ -50,7 +50,7 @@ def execute(args: argparse.Namespace):
         changes="\n".join(changes),
     )
     if not args.silent:
-        print(changelog)
+        print(changelog)  # noqa: T201
     if args.output:
         with open(args.output, "w") as f:
             f.write(changelog)
@@ -82,7 +82,8 @@ def generate_changelog(
 
     Args:
         repo (GitRepository): Git repository instance
-        changes (list[str] | list[GitCommit]): List of changes (either formatted strings or GitCommit objects)
+        changes (list[str] | list[GitCommit]): List of changes
+            (either formatted strings or GitCommit objects)
         commit_format (str): Format string for each commit in the changelog
 
     Returns:

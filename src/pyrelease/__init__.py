@@ -1,14 +1,14 @@
 import argparse
 import importlib
-from pathlib import Path
 import sys
-from typing import Callable
+from collections.abc import Callable
+from pathlib import Path
 
 from pyrelease.utils import read_pyrelease_config
 
 
 def add_global_args(parser: argparse.ArgumentParser):
-    global_args = parser.add_argument_group("global")
+    global_args = parser.add_argument_group("global options")
     global_args.add_argument(
         "--project-name",
         type=str,
@@ -39,8 +39,13 @@ def create_parser_from_files(
     argparse.ArgumentParser,
     dict[str, tuple[Callable[[argparse.Namespace], None], argparse.ArgumentParser]],
 ]:
-    parser = argparse.ArgumentParser(prog="pyrelease", description="PyRelease CLI")
+    parser = argparse.ArgumentParser(
+        prog="pyrelease",
+        description="PyRelease CLI is a tool to manage Python project releases.",
+        usage="pyrelease <command> [options]",
+    )
     sub_parser = parser.add_subparsers(dest="command")
+    add_global_args(parser)
     cli_commands = {}
     for f in path.glob("*.py"):
         if f.is_file() and f.stem != "__init__":
@@ -58,6 +63,7 @@ def create_parser_from_files(
             module_executor: Callable[[argparse.Namespace], None] = module.execute
             add_global_args(module_parser)
             cli_commands[f.stem] = (module_executor, module_parser)
+    parser._positionals.title = "commands"
     return parser, cli_commands
 
 
