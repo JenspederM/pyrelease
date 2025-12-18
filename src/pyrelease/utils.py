@@ -54,8 +54,9 @@ def get_version_from_pyproject() -> str:
 
 
 class GitRepository:
-    def __init__(self, path: str = "."):
+    def __init__(self, path: str = ".", dry_run: bool = False):
         self.is_git_repo(path)
+        self.dry_run = dry_run
         self.path = path
 
     @staticmethod
@@ -81,7 +82,10 @@ class GitRepository:
             return False
 
     def create_version_tag(
-        self, version: str, message: str = "", format: str | None = None
+        self,
+        version: str,
+        message: str = "",
+        format: str | None = None,
     ) -> str:
         """Create a new version tag in the git repository.
 
@@ -101,7 +105,8 @@ class GitRepository:
         if not message:
             message = input(f"Enter tag message for version {version}: ")
             tag_cmd.extend(["-m", message])
-        subprocess.run(tag_cmd, check=True, cwd=self.path)
+        if not self.dry_run:
+            subprocess.run(tag_cmd, check=True, cwd=self.path)
         return version
 
     def get_latest_tag(self) -> str | None:

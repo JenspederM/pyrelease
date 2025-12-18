@@ -26,5 +26,7 @@ def register(subparsers: _SubParsersAction):
 def execute(args: argparse.Namespace):
     if not args.tag_format and not args.message:
         args.message = input("Enter tag message: ")
-    git = GitRepository(args.path)
-    git.create_version_tag(args.project_version, args.message, args.tag_format)
+    git = GitRepository(args.path, dry_run=args.dry_run)
+    git.create_version_tag(
+        version=args.project_version, message=args.message, format=args.tag_format
+    )

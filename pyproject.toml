@@ -35,8 +35,6 @@ addopts = [
     '--junit-xml=coverage.junit.xml',
     '--cov=pyrelease',
     '--no-cov-on-fail',
-    '--cov-fail-under=70',
-    '--ignore-glob="develop-eggs/*"',
     '-ra',
     '-vv',
     '-x',

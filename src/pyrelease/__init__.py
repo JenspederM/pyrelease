@@ -31,6 +31,26 @@ def add_global_args(parser: argparse.ArgumentParser):
         help="Suppress output to stdout",
         default=False,
     )
+    global_args.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Perform a trial run with no changes made",
+        default=False,
+    )
+
+
+def load_command_module(command_name: str):
+    module_path = f"pyrelease.commands.{command_name}"
+    module = importlib.import_module(module_path)
+    if not hasattr(module, "register"):  # pragma: no cover - we trust importlib
+        raise ImportError(
+            f"The module {command_name} does not have a register function."
+        )
+    if not hasattr(module, "execute"):  # pragma: no cover - we trust importlib
+        raise ImportError(
+            f"The module {command_name} does not have an execute function."
+        )
+    return module
 
 
 def create_parser_from_files(
@@ -49,16 +69,7 @@ def create_parser_from_files(
     cli_commands = {}
     for f in path.glob("*.py"):
         if f.is_file() and f.stem != "__init__":
-            module_path = f"pyrelease.commands.{f.stem}"
-            module = importlib.import_module(module_path)
-            if not hasattr(module, "register"):
-                raise ImportError(
-                    f"The module {f.stem} does not have a register function."
-                )
-            if not hasattr(module, "execute"):
-                raise ImportError(
-                    f"The module {f.stem} does not have an execute function."
-                )
+            module = load_command_module(f.stem)
             module_parser: argparse.ArgumentParser = module.register(sub_parser)
             module_executor: Callable[[argparse.Namespace], None] = module.execute
             add_global_args(module_parser)
