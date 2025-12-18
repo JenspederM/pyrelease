@@ -21,9 +21,9 @@ build-backend = "uv_build"
 packages = ["src/pyrelease"]
 
 [tool.pyrelease]
-tag-format = "v{version}"
-commit-format = "- {message} ([{abbr_hash}]({abbr_hash}))"
-changelog-format = "{version} Changes\n=========================\n\n{changes}"
+tag.tag-format = "v{version}"
+changelog.commit-format = "- {message} ([{abbr_hash}]({abbr_hash}))"
+changelog.changelog-format = "{version} Changes\n=========================\n\n{changes}"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

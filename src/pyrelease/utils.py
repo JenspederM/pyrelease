@@ -35,11 +35,34 @@ def read_pyrelease_config(path: str) -> list[str]:
         pyrelease_config.update(dot_pyrelease_data.get("pyrelease", {}))
     pyrelease_config["project-name"] = project_name
     pyrelease_config["project-version"] = project_version
-    return [
-        f"--{key}={value}"
-        for key, value in pyrelease_config.items()
-        if value is not None
-    ]
+    return pyrelease_config
+
+
+def get_additional_args(config: dict, command_name: str) -> list[str]:
+    """Convert a configuration dictionary to a list of command-line arguments.
+
+    Args:
+        config (dict): Pyrelease configuration dictionary
+        command_name (str): Command name
+
+    Returns:
+        list[str]: List of command-line arguments
+    """
+    additional_args = config.get(command_name, {})
+    args = []
+    for key, value in additional_args.items():
+        arg_key = f"--{key.replace('_', '-')}"
+        if isinstance(value, bool):
+            if value:
+                args.append(arg_key)
+        elif isinstance(value, list):
+            for item in value:
+                args.append(arg_key)
+                args.append(str(item))
+        else:
+            args.append(arg_key)
+            args.append(str(value))
+    return args
 
 
 def get_version_from_pyproject() -> str:

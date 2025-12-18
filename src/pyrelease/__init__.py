@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from pyrelease.utils import read_pyrelease_config
+from pyrelease.utils import get_additional_args, read_pyrelease_config
 
 
 def add_global_args(parser: argparse.ArgumentParser):
@@ -29,6 +29,12 @@ def add_global_args(parser: argparse.ArgumentParser):
         "--silent",
         action="store_true",
         help="Suppress output to stdout",
+        default=False,
+    )
+    global_args.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output",
         default=False,
     )
     global_args.add_argument(
@@ -82,12 +88,23 @@ def main(sys_args: list[str] | None = None):
     try:
         commands_path = Path(__file__).parent / "commands"
         parser, cli_commands = create_parser_from_files(commands_path)
+        # sys_argv[0] is the script name, so we skip it
         sys_args = sys.argv[1:] if sys_args is None else sys_args
         args = parser.parse_args(sys_args)
         config_args = read_pyrelease_config(args.path)
         if args.command in cli_commands:
+            additional_args = get_additional_args(config_args, args.command)
             command_executor, command_parser = cli_commands[args.command]
-            known_args, _ = command_parser.parse_known_args(config_args + sys_args)
+            # sys_argv[0] is the command name, so we skip it
+            command_args = additional_args + sys_args[1:]
+            if args.debug:
+                print(  # noqa: T201
+                    f"Debug: Executing command '{args.command}':\n"
+                    f"    sys_args={sys_args},\n"
+                    f"    additional_args={additional_args},\n"
+                    f"    command_args={command_args}\n",
+                )
+            known_args, _ = command_parser.parse_known_args(command_args)
             command_executor(known_args)
         else:
             parser.print_help()
