@@ -61,10 +61,10 @@ def create_parser_from_files(
     return parser, cli_commands
 
 
-def main():
+def main(sys_args: list[str] | None = None):
     commands_path = Path(__file__).parent / "commands"
     parser, cli_commands = create_parser_from_files(commands_path)
-    sys_args = sys.argv[1:]
+    sys_args = sys.argv[1:] if sys_args is None else sys_args
     args = parser.parse_args(sys_args)
     config_args = read_pyrelease_config(args.path)
     if args.command in cli_commands:

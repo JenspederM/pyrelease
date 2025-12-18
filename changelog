@@ -1,0 +1,10 @@
+v0.1.0 Changes
+=========================
+
+- feat: now we can load args from pyproject.toml or pyrelease.toml ([a8cb1f2](a8cb1f2))
+- fix: print changelog unless silent is specified ([8b4edf7](8b4edf7))
+- refactor: discover commands from files ([65e7dfd](65e7dfd))
+- feat: now we can generate a changelog ([4388154](4388154))
+- fix: add remote_url to git commits ([4b102d4](4b102d4))
+- style: add comment on pretty-format and remove __main__ ([bcadcd6](bcadcd6))
+- feat: we can now interact with git ([52e91df](52e91df))
