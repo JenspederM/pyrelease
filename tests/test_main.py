@@ -46,7 +46,7 @@ def test_load_command_module():
 
 
 def test_load_command_module_invalid():
-    """Test that load_command_module raises an ImportError for an invalid command module."""
+    "Test that load_command_module raises an ImportError with invalid command module."
     with pytest.raises(
         ImportError,
         match="No module named 'pyrelease.commands.non_existent_command'",
