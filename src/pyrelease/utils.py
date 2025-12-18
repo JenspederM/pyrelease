@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 import tomllib
@@ -48,7 +49,15 @@ def get_additional_args(config: dict, command_name: str) -> list[str]:
     Returns:
         list[str]: List of command-line arguments
     """
+    global_args = [
+        arg.option_strings[0]
+        for arg in add_global_args(argparse.ArgumentParser())._group_actions
+    ]
     additional_args = config.get(command_name, {})
+    for arg in global_args:
+        arg_key = arg.lstrip("--")
+        if arg_key in config:
+            additional_args[arg_key] = config[arg_key]
     args = []
     for key, value in additional_args.items():
         arg_key = f"--{key.replace('_', '-')}"
@@ -65,8 +74,50 @@ def get_additional_args(config: dict, command_name: str) -> list[str]:
     return args
 
 
-def get_version_from_pyproject() -> str:
+def add_global_args(parser: argparse.ArgumentParser):
+    global_args = parser.add_argument_group("global options")
+    global_args.add_argument(
+        "--project-name",
+        type=str,
+        help="Name of the project",
+    )
+    global_args.add_argument(
+        "--project-version",
+        type=str,
+        help="Version of the project",
+    )
+    global_args.add_argument(
+        "--path",
+        type=str,
+        default=".",
+        help="Path to the git repository",
+    )
+    global_args.add_argument(
+        "--silent",
+        action="store_true",
+        help="Suppress output to stdout",
+        default=False,
+    )
+    global_args.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output",
+        default=False,
+    )
+    global_args.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Perform a trial run with no changes made",
+        default=False,
+    )
+    return global_args
+
+
+def get_version_from_pyproject(path: Path) -> str:
     """Retrieve the version from pyproject.toml.
+
+    Args:
+        path (Path): Path to the project directory
 
     Returns:
         str: Version string

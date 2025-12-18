@@ -4,45 +4,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from pyrelease.utils import get_additional_args, read_pyrelease_config
-
-
-def add_global_args(parser: argparse.ArgumentParser):
-    global_args = parser.add_argument_group("global options")
-    global_args.add_argument(
-        "--project-name",
-        type=str,
-        help="Name of the project",
-    )
-    global_args.add_argument(
-        "--project-version",
-        type=str,
-        help="Version of the project",
-    )
-    global_args.add_argument(
-        "--path",
-        type=str,
-        default=".",
-        help="Path to the git repository",
-    )
-    global_args.add_argument(
-        "--silent",
-        action="store_true",
-        help="Suppress output to stdout",
-        default=False,
-    )
-    global_args.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug output",
-        default=False,
-    )
-    global_args.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Perform a trial run with no changes made",
-        default=False,
-    )
+from pyrelease.utils import add_global_args, get_additional_args, read_pyrelease_config
 
 
 def load_command_module(command_name: str):
