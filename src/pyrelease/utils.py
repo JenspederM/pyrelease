@@ -8,14 +8,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def read_pyrelease_config(path: str) -> list[str]:
+def read_pyrelease_config(path: str) -> dict:
     """Read pyrelease configuration from pyproject.toml and .pyrelease.toml files.
 
     Args:
         path (str): Path
 
     Returns:
-        list[str]: List of command-line arguments derived from the configuration
+        dict: Pyrelease configuration dictionary
     """
     pyproject_path = Path(f"{path}/pyproject.toml")
     if not pyproject_path.exists():
