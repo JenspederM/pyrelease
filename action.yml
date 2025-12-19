@@ -5,6 +5,10 @@ inputs:
     description: "The command to run (release or publish)"
     required: false
     default: "changelog"
+  conventional:
+    description: "Whether to use conventional commits to determine the version bump"
+    required: false
+    default: "false"
   changelog-args:
     description: "Additional arguments for the changelog command"
     required: false
@@ -68,7 +72,13 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        uv run --no-dev pyrelease bump ${{ inputs.bump-args }}
+        uv run --no-dev pyrelease bump \
+          ${{ inputs.bump-args }} \
+          $(
+            if [ "${{ inputs.conventional }}" == "true" ]; then
+              echo "--conventional"
+            fi
+          )
     - name: "Create Tag"
       shell: "bash"
       env:
@@ -83,7 +93,12 @@ runs:
         uv run --no-dev pyrelease changelog \
           --from-ref="v${{ steps.bump.outputs.old-version }}" \
           --to-ref="v${{ steps.bump.outputs.new-version }}" \
-          ${{ inputs.changelog-args }}
+          ${{ inputs.changelog-args }} \
+          $(
+            if [ "${{ inputs.conventional }}" == "true" ]; then
+              echo "--conventional"
+            fi
+          )
     - name: "Publish Release"
       if: ${{ inputs.command == 'publish' }}
       shell: "bash"

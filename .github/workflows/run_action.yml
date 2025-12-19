@@ -12,7 +12,7 @@ jobs:
               uses: ./
               with:
                   command: release
+                  conventional: "true"
                   changelog-args: '--commit-format "- {message} ([{abbr_hash}]({remote_url}/{abbr_hash}))" --output CHANGELOG.md'
-                  bump-args: "minor"
                   tag-args: '--message-format "Release version {version}"'
                   github-token: ${{ secrets.GITHUB_TOKEN }}

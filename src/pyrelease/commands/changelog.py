@@ -2,7 +2,7 @@ import argparse
 from argparse import _SubParsersAction
 from dataclasses import asdict
 
-from pyrelease.utils import GitRepository
+from pyrelease.utils import GitCommit, GitRepository
 
 DEFAULT_COMMIT_FORMAT = "- {message} ([{abbr_hash}]({remote_url}/{abbr_hash}))"
 DEFAULT_CHANGELOG_FORMAT = (
@@ -44,6 +44,18 @@ def register(subparsers: _SubParsersAction):
         default=DEFAULT_COMMIT_FORMAT,
     )
     parser.add_argument(
+        "--conventional",
+        action="store_true",
+        help="Use conventional commit format for the changelog",
+    )
+    parser.add_argument(
+        "--conventional-type-mapping",
+        type=str,
+        help="Mapping of conventional commit types to changelog sections "
+        "(e.g., feat:Features,fix:Bug Fixes)",
+        default="feat:Features,fix:Bug Fixes,docs:Documentation,style:Styling,",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         help="Output file for the changelog (prints to stdout if not provided)",
@@ -57,12 +69,22 @@ def execute(args: argparse.Namespace):
     latest_tag = git.get_latest_tag()
     commits = git.get_commits_since(from_ref=args.from_ref, to_ref=args.to_ref)
     format_str = args.commit_format or DEFAULT_COMMIT_FORMAT
-    changes: list[str] = []
-    for commit in commits:
-        changes.append(format_str.format(**asdict(commit)))
+    if args.conventional:
+        type_mapping = dict(
+            item.split(":", 1)
+            for item in args.conventional_type_mapping.split(",")
+            if ":" in item
+        )
+        changes = generate_conventional_changelog(
+            commits,
+            type_mapping=type_mapping,
+            commit_format=format_str,
+        )
+    else:
+        changes = "\n".join([format_str.format(**asdict(commit)) for commit in commits])
     changelog = args.changelog_format.format(
         version=latest_tag,
-        changes="\n".join(changes),
+        changes=changes,
         remote_url=git.get_remote_url(),
         from_ref=args.from_ref,
         to_ref=args.to_ref,
@@ -72,3 +94,28 @@ def execute(args: argparse.Namespace):
     if args.output:
         with open(args.output, "w") as f:
             f.write(changelog)
+
+
+def generate_conventional_changelog(
+    commits: list[GitCommit],
+    type_mapping: dict[str, str],
+    commit_format: str,
+) -> str:
+    other_changes = []
+    sections: dict[str, list[str]] = {section: [] for section in type_mapping.values()}
+    for commit in commits:
+        commit_type = commit.message.split(":", 1)[0]
+        section = type_mapping.get(commit_type)
+        if section:
+            formatted_commit = commit_format.format(**asdict(commit))
+            sections[section].append(formatted_commit)
+        else:
+            formatted_commit = commit_format.format(**asdict(commit))
+            other_changes.append(formatted_commit)
+    changelog_sections: list[str] = []
+    for section, entries in sections.items():
+        if entries:
+            changelog_sections.append(f"### {section}\n" + "\n".join(entries))
+    if other_changes:
+        changelog_sections.append("### Other Changes\n" + "\n".join(other_changes))
+    return "\n\n".join(changelog_sections)
