@@ -2,17 +2,29 @@ name: "Python Release Action"
 description: "An action to release Python packages."
 inputs:
   command:
-    description: "The command to run (e.g., 'tag' or 'changelog')"
+    description: "The command to run (release or publish)"
     required: false
     default: "changelog"
-  changelog-commit-format:
-    description: "Format string for each commit in the changelog"
-    required: false
-    default: "- {message} ([{abbr_hash}]({remote_url}/{abbr_hash}))"
-  changelog-output:
-    description: "Output file for the changelog (prints to stdout if not provided)"
+  changelog-args:
+    description: "Additional arguments for the changelog command"
     required: false
     default: ""
+  tag-args:
+    description: "Additional arguments for the tag command"
+    required: false
+    default: ""
+  bump-args:
+    description: "Additional arguments for the bump command"
+    required: false
+    default: ""
+  git-username:
+    description: "Git username for committing changes"
+    required: false
+    default: "github-actions[bot]"
+  git-email:
+    description: "Git email for committing changes"
+    required: false
+    default: "github-actions[bot]@users.noreply.github.com"
   github-token:
     description: "GitHub token for authentication"
     required: true
@@ -20,27 +32,52 @@ inputs:
 outputs:
   old-version:
     description: "Old version"
-    value: ${{ steps.set-version.outputs.old-version }}
+    value: ${{ steps.bump.outputs.old-version }}
   new-version:
     description: "New version"
-    value: ${{ steps.set-version.outputs.new-version }}
+    value: ${{ steps.bump.outputs.new-version }}
 runs:
   using: "composite"
   steps:
     - uses: jdx/mise-action@v3
-    - name: "Run Action"
+    - name: "Check command"
       shell: "bash"
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        if [ "${{ inputs.command }}" = "changelog" ]; then
-          uv run pyrelease changelog \
-            --path . \
-            --commit-format "${{ inputs.changelog-commit-format }}" \
-            --output "${{ inputs.changelog-output }}"
-        elif [ "${{ inputs.command }}" = "tag" ]; then
-          uv run pyrelease tag --message "Release new version" --path .
-        else
+        valid_commands=("release" "publish")
+        if [[ ! " ${valid_commands[@]} " =~ " ${{ inputs.command }} " ]]; then
           echo "Unknown command: ${{ inputs.command }}"
           exit 1
         fi
+    - name: "Bump Version"
+      id: bump
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        uv run --no-dev pyrelease bump ${{ inputs.bump-args }}
+    - name: "Create Tag"
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        git config --global user.name "${{ inputs.git-username }}"
+        git config --global user.email "${{ inputs.git-email }}"
+        uv run --no-dev pyrelease tag ${{ inputs.tag-args }}
+    - name: "Generate Changelog"
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        uv run --no-dev pyrelease changelog \
+          --from-ref="v${{ steps.bump.outputs.old-version }}" \
+          --to-ref="v${{ steps.bump.outputs.new-version }}" \
+          ${{ inputs.changelog-args }}
+    - name: "Publish Release"
+      if: ${{ inputs.command == 'publish' }}
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        uv publish

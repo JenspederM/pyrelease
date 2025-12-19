@@ -13,20 +13,28 @@ def register(subparsers: _SubParsersAction):
         "--message",
         type=str,
         help="Tag message",
-        required=True,
+        required=False,
+        default=None,
     )
     parser.add_argument(
-        "--tag-format",
+        "--message-format",
         type=str,
-        help="Format string for the tag name",
+        help="Format string for the tag message",
     )
     return parser
 
 
 def execute(args: argparse.Namespace):
-    if not args.tag_format and not args.message:
+    if not args.message_format and not args.message:
         args.message = input("Enter tag message: ")
     git = GitRepository(args.path, dry_run=args.dry_run)
-    git.create_version_tag(
-        version=args.project_version, message=args.message, format=args.tag_format
-    )
+    if args.message_format:
+        git.create_version_tag(
+            version=args.project_version,
+            message=args.message_format.format(version=args.project_version),
+        )
+    else:
+        git.create_version_tag(
+            version=args.project_version,
+            message=args.message,
+        )

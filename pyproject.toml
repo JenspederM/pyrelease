@@ -11,12 +11,7 @@ dependencies = []
 pyrelease = "pyrelease:main"
 
 [dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-    "pytest-cov>=7.0.0",
-    "ruff>=0.14.9",
-    "ty>=0.0.4",
-]
+dev = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "ruff>=0.14.9", "ty>=0.0.4"]
 
 [build-system]
 requires = ["uv_build>=0.9.15,<0.10.0"]
@@ -24,11 +19,6 @@ build-backend = "uv_build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/pyrelease"]
-
-[tool.pyrelease]
-tag.tag-format = "v{version}"
-changelog.commit-format = "- {message} ([{abbr_hash}]({abbr_hash}))"
-changelog.changelog-format = "{version} Changes\n=========================\n\n{changes}"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

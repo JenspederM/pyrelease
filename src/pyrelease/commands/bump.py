@@ -27,14 +27,6 @@ def register(subparsers: _SubParsersAction):
             "dev",
         ],
     )
-    parser.add_argument(
-        "--version-files",
-        type=str,
-        nargs="*",
-        help="List of version files to update",
-        required=False,
-    )
-    parser.set_defaults(func=execute)
     return parser
 
 
@@ -62,5 +54,5 @@ def execute(args: argparse.Namespace):
         gh_output = os.environ.get("GITHUB_OUTPUT")
         if gh_output:
             with open(os.environ["GITHUB_OUTPUT"], "a") as gh_output_file:
-                gh_output_file.write(f"old_version={old_version}\n")
-                gh_output_file.write(f"new_version={new_version}\n")
+                gh_output_file.write(f"old-version={old_version}\n")
+                gh_output_file.write(f"new-version={new_version}\n")

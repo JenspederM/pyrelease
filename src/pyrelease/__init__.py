@@ -50,12 +50,12 @@ def main(sys_args: list[str] | None = None):
     try:
         commands_path = Path(__file__).parent / "commands"
         parser, cli_commands = create_parser_from_files(commands_path)
-        # sys_argv[0] is the script name, so we skip it
+        # sys.argv[0] is the script name, so we skip it
         sys_args = sys.argv[1:] if sys_args is None else sys_args
         args = parser.parse_args(sys_args)
-        config_args = read_pyrelease_config(args.path)
+        pyrelease_config = read_pyrelease_config(args.path)
         if args.command in cli_commands:
-            additional_args = get_additional_args(config_args, args.command)
+            additional_args = get_additional_args(pyrelease_config, args.command)
             command_executor, command_parser = cli_commands[args.command]
             # sys_argv[0] is the command name, so we skip it
             command_args = additional_args + sys_args[1:]

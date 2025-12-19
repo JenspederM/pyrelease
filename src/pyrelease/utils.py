@@ -159,28 +159,28 @@ class GitRepository:
         self,
         version: str,
         message: str = "",
-        format: str | None = None,
     ) -> str:
         """Create a new version tag in the git repository.
 
         Args:
             version (str): Version string for the tag
             message (str): Tag message
-            format (str | None): Format string for the tag name
 
         Returns:
             str: Created tag name
         """
-        if format:
-            version = format.format(version=version)
-        else:
-            version = f"v{version}"
+        version = f"v{version}"
         tag_cmd = ["git", "tag", "-a", version]
         if not message:
             message = input(f"Enter tag message for version {version}: ")
             tag_cmd.extend(["-m", message])
+        else:
+            tag_cmd.extend(["-m", message])
         if not self.dry_run:
-            subprocess.run(tag_cmd, check=True, cwd=self.path)
+            try:
+                subprocess.run(tag_cmd, check=True, cwd=self.path)
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Failed to create git tag '{version}': {e}") from e
         return version
 
     def get_latest_tag(self) -> str | None:
@@ -230,12 +230,17 @@ class GitRepository:
             )
         return remote_url
 
-    def get_commits_since(self, commit_id: str = "") -> list[GitCommit]:
+    def get_commits_since(
+        self,
+        from_ref: str = "",
+        to_ref: str = "HEAD",
+    ) -> list[GitCommit]:
         """Get a list of commit messages since a specific commit.
 
         Args:
-            commit_id (str): Commit hash to get commits since,
+            from_ref (str): Commit hash to get commits since,
                 defaults to empty string (all commits)
+            to_ref (str): Commit hash to get commits to, defaults to HEAD
 
         Returns:
             list[GitCommit]: List of commits since the specified commit
@@ -258,9 +263,9 @@ class GitRepository:
             "}",
         ]
         pretty_format = "".join(commit_parts)
-        if commit_id:
-            commit_id = commit_id.strip()
-            between = f"{commit_id}..HEAD"
+        if from_ref:
+            from_ref = from_ref.strip()
+            between = f"{from_ref}..{to_ref}"
             cmd = ["git", "log", between, f"--pretty=format:{pretty_format}"]
         else:
             between = ""
