@@ -232,14 +232,14 @@ class GitRepository:
 
     def get_commits_since(
         self,
-        from_ref: str = "",
+        from_ref: str | None = None,
         to_ref: str = "HEAD",
     ) -> list[GitCommit]:
         """Get a list of commit messages since a specific commit.
 
         Args:
-            from_ref (str): Commit hash to get commits since,
-                defaults to empty string (all commits)
+            from_ref (str | None): Commit hash to get commits since,
+                defaults to None (all commits)
             to_ref (str): Commit hash to get commits to, defaults to HEAD
 
         Returns:
