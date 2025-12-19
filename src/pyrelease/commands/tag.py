@@ -38,3 +38,8 @@ def execute(args: argparse.Namespace):
             version=args.project_version,
             message=args.message,
         )
+    if not args.silent:
+        msg = args.message or args.message_format.format(version=args.project_version)
+        print(  # noqa: T201
+            f"Created git tag '{args.project_version}' with message: '{msg}'"
+        )

@@ -35,7 +35,7 @@ def test_main_valid_command(capsys):
     """Test that running main with a valid command works."""
     main(["tag", "--message", "Test tag message", "--dry-run"])
     captured = capsys.readouterr()
-    assert "Test tag message" not in captured.out  # Tag creation does not print message
+    assert "Test tag message" in captured.out
 
 
 def test_load_command_module():
