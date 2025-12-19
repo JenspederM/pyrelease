@@ -17,6 +17,16 @@ inputs:
     description: "Additional arguments for the bump command"
     required: false
     default: ""
+  push:
+    description: |
+      Whether to push changes to the remote repository.
+      Note: This requires appropriate permissions.
+    required: false
+    default: "false"
+  push-branch:
+    description: "The branch to push changes to"
+    required: false
+    default: "main"
   git-username:
     description: "Git username for committing changes"
     required: false
@@ -50,6 +60,8 @@ runs:
           echo "Unknown command: ${{ inputs.command }}"
           exit 1
         fi
+        git config --global user.name "${{ inputs.git-username }}"
+        git config --global user.email "${{ inputs.git-email }}"
     - name: "Bump Version"
       id: bump
       shell: "bash"
@@ -62,8 +74,6 @@ runs:
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        git config --global user.name "${{ inputs.git-username }}"
-        git config --global user.email "${{ inputs.git-email }}"
         uv run --no-dev pyrelease tag ${{ inputs.tag-args }}
     - name: "Generate Changelog"
       shell: "bash"
@@ -81,3 +91,10 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
         uv publish
+    - name: "Push Changes"
+      if: ${{ inputs.push == 'true' && inputs.push-branch != '' }}
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        git push origin ${{ inputs.push-branch }} --tags
