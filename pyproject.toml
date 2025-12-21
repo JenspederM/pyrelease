@@ -1,7 +1,7 @@
 [project]
 name = "pyrelease"
 version = "0.1.0"
-description = "Add your description here"
+description = "Automate your Python project releases."
 readme = "README.md"
 authors = [{ name = "Jens Peder Meldgaard", email = "jenspederm@gmail.com" }]
 requires-python = ">=3.11"
