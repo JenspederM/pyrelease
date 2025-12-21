@@ -1,5 +1,9 @@
 from pyrelease import main
-from pyrelease.utils import GitRepository, create_python_project
+from pyrelease.utils import (
+    GitRepository,
+    create_python_project,
+    get_version_from_pyproject,
+)
 
 
 def test_changelog(tmp_path_factory, capsys):
@@ -24,6 +28,64 @@ def test_changelog(tmp_path_factory, capsys):
 See all changes at: [..HEAD](/compare/..HEAD)
 """
     assert changelog.strip() == expected_changelog.strip()
+
+
+def test_changelog_new_version(tmp_path_factory, capsys):
+    path = tmp_path_factory.mktemp("repo")
+    create_python_project(path, git=True)
+    git = GitRepository(path)
+    commit_hash = git.commit("feat: add new feature")
+    old_version = get_version_from_pyproject(path)
+
+    # Generate changelog for old version
+    main(
+        [
+            "changelog",
+            "--path",
+            str(path),
+        ]
+    )
+    captured = capsys.readouterr()
+    old_changelog = f"""
+# {old_version}
+=========================
+- feat: add new feature ([{commit_hash}](/commit/{commit_hash}))
+
+See all changes at: [..HEAD](/compare/..HEAD)
+"""
+    assert captured.out.strip() == old_changelog.strip()
+
+    # Bump version
+    main(
+        [
+            "bump",
+            "--bump",
+            "minor",
+            "--path",
+            str(path),
+            "--silent",
+        ]
+    )
+    new_version = get_version_from_pyproject(path)
+    assert new_version != old_version, "Version should have been bumped"
+
+    # Generate changelog for new version
+    main(
+        [
+            "changelog",
+            "--path",
+            str(path),
+        ]
+    )
+    captured = capsys.readouterr()
+    new_changelog = f"""
+# {new_version}
+=========================
+- feat: add new feature ([{commit_hash}](/commit/{commit_hash}))
+
+See all changes at: [..HEAD](/compare/..HEAD)
+"""
+    assert captured.out.strip() == new_changelog.strip()
 
 
 def test_changelog_multiple(tmp_path_factory, capsys):
