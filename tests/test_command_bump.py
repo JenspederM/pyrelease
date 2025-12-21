@@ -77,7 +77,9 @@ def test_bump_command_fails():
     with pytest.raises(
         RuntimeError, match="Either --bump or --conventional must be specified"
     ):
-        main(["bump", "--bump-mapping", "feat:minor,fix:patch", "--dry-run"])
+        main(
+            ["bump", "--conventional-bump-mapping", "feat:minor,fix:patch", "--dry-run"]
+        )
 
 
 def test_bump_command_uv_missing(monkeypatch):
@@ -230,7 +232,7 @@ def test_bump_conventional_no_valid_commits(tmp_path_factory):
             [
                 "bump",
                 "--conventional",
-                "--bump-mapping",
+                "--conventional-bump-mapping",
                 "feat:minor,fix:patch",
                 "--dry-run",
                 "--path",
@@ -251,7 +253,7 @@ def test_bump_conventional(tmp_path_factory):
         [
             "bump",
             "--conventional",
-            "--bump-mapping",
+            "--conventional-bump-mapping",
             "feat:minor,fix:patch",
             "--path",
             str(repo_path),
@@ -274,7 +276,7 @@ def test_bump_conventional_additional_component(tmp_path_factory):
         [
             "bump",
             "--conventional",
-            "--bump-mapping",
+            "--conventional-bump-mapping",
             "feat:minor,fix:patch",
             "--bump",
             "rc",
@@ -301,7 +303,7 @@ def test_bump_conventional_dry_run(tmp_path_factory):
         [
             "bump",
             "--conventional",
-            "--bump-mapping",
+            "--conventional-bump-mapping",
             "feat:minor,fix:patch",
             "--dry-run",
             "--path",
@@ -324,7 +326,7 @@ def test_bump_conventional_custom_mapping(tmp_path_factory):
         [
             "bump",
             "--conventional",
-            "--bump-mapping",
+            "--conventional-bump-mapping",
             "chore:patch,refactor:minor",
             "--path",
             str(repo_path),
@@ -350,7 +352,7 @@ def test_bump_conventional_no_conventional_commits(tmp_path_factory):
             [
                 "bump",
                 "--conventional",
-                "--bump-mapping",
+                "--conventional-bump-mapping",
                 "feat:minor,fix:patch",
                 "--dry-run",
                 "--path",

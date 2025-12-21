@@ -41,7 +41,7 @@ def register(subparsers: _SubParsersAction):
         default=False,
     )
     parser.add_argument(
-        "--bump-mapping",
+        "--conventional-bump-mapping",
         type=str,
         help="Mapping of conventional commit types to version bumps "
         "(e.g., feat:minor,fix:patch)",
@@ -110,7 +110,7 @@ def determine_bump_from_conventional_commits(
     git = GitRepository(args.path)
     latest_tag = git.get_latest_tag()
     commits = git.get_commits_since(from_ref=latest_tag)
-    bump_mapping = collect_bump_mapping(args.bump_mapping)
+    bump_mapping = collect_bump_mapping(args.conventional_bump_mapping)
     highest_bump_level = None
     for commit in commits:
         commit_type = commit.message.split(":", 1)[0]
