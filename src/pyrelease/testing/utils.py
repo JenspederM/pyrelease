@@ -73,7 +73,7 @@ def get_git_tags(path: Path) -> list[str]:
     if not path.exists():
         raise FileNotFoundError(f"Path '{path}' does not exist.")
     result = subprocess.run(
-        ["git", "tag", "-l"],
+        ["git", "tag", "-l", "-n99"],
         cwd=path,
         check=False,
         capture_output=True,
@@ -83,7 +83,11 @@ def get_git_tags(path: Path) -> list[str]:
         raise RuntimeError(
             f"Failed to get git tags at '{path}': {result.stderr.strip()}"
         )
-    tags = result.stdout.strip().splitlines()
+    tags = [
+        [part.strip() for part in line.split(" ", 1)]
+        for line in result.stdout.strip().splitlines()
+        if line
+    ]
     return tags
 
 

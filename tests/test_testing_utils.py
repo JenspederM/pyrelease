@@ -79,7 +79,10 @@ def test_create_git_tag(tmp_path_factory):
     create_git_commit(tmp_path, "Initial commit")
     create_git_tag(tmp_path, "v0.1.0", "Initial tag")
     tags = get_git_tags(tmp_path)
-    assert "v0.1.0" in tags
+    assert len(tags) == 1
+    tag = tags[0]
+    assert "v0.1.0" == tag[0]
+    assert "Initial tag" == tag[1]
 
 
 def test_create_git_tag_idempotent(tmp_path_factory):
@@ -89,7 +92,10 @@ def test_create_git_tag_idempotent(tmp_path_factory):
     create_git_commit(tmp_path, "Initial commit")
     create_git_tag(tmp_path, "v0.1.0", "Initial tag")
     tags = get_git_tags(tmp_path)
-    assert "v0.1.0" in tags
+    assert len(tags) == 1
+    tag = tags[0]
+    assert "v0.1.0" == tag[0]
+    assert "Initial tag" == tag[1]
     # Create the same tag again to ensure idempotency
     with pytest.warns(UserWarning, match="Tag 'v0.1.0' already exists"):
         create_git_tag(tmp_path, "v0.1.0", "Initial tag")
@@ -126,8 +132,10 @@ def test_get_git_tags_with_tags(tmp_path_factory):
     create_git_commit(tmp_path, "Second commit")
     create_git_tag(tmp_path, "v0.2.0", "Second tag")
     tags = get_git_tags(tmp_path)
-    assert "v0.1.0" in tags
-    assert "v0.2.0" in tags
+    assert len(tags) == 2
+    tags_only = [tag for tag, _ in tags]
+    assert "v0.1.0" in tags_only
+    assert "v0.2.0" in tags_only
 
 
 def test_assert_version_bump():
