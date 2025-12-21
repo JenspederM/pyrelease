@@ -30,6 +30,61 @@ See all changes at: [..HEAD](/compare/..HEAD)
     assert changelog.strip() == expected_changelog.strip()
 
 
+def test_changelog_other_commit_format(tmp_path_factory, capsys):
+    path = tmp_path_factory.mktemp("repo")
+    create_python_project(path, git=True)
+    git = GitRepository(path)
+    commit_hash = git.commit("feat: add new feature")
+    main(
+        [
+            "changelog",
+            "--path",
+            str(path),
+            "--commit-format",
+            "* {message} - {abbr_hash}",
+        ]
+    )
+    captured = capsys.readouterr()
+    changelog = captured.out
+    expected_changelog = f"""
+# 0.1.0
+=========================
+* feat: add new feature - {commit_hash}
+
+See all changes at: [..HEAD](/compare/..HEAD)
+"""
+    assert changelog.strip() == expected_changelog.strip()
+
+
+def test_changelog_other_changelog_format(tmp_path_factory, capsys):
+    path = tmp_path_factory.mktemp("repo")
+    create_python_project(path, git=True)
+    git = GitRepository(path)
+    commit_hash = git.commit("feat: add new feature")
+    changelog_format = """
+# Release v{version}
+=========================
+{changes}""".strip()
+
+    main(
+        [
+            "changelog",
+            "--path",
+            str(path),
+            "--changelog-format",
+            changelog_format,
+        ]
+    )
+    captured = capsys.readouterr()
+    changelog = captured.out
+    expected_changelog = f"""
+# Release v0.1.0
+=========================
+- feat: add new feature ([{commit_hash}](/commit/{commit_hash}))
+"""
+    assert changelog.strip() == expected_changelog.strip()
+
+
 def test_changelog_new_version(tmp_path_factory, capsys):
     path = tmp_path_factory.mktemp("repo")
     create_python_project(path, git=True)
