@@ -116,8 +116,30 @@ def collect_bump_mapping(bump_mapping_str: str) -> dict[str, list[str]]:
     for mapping in bump_mapping_str.split(","):
         if not mapping.strip():
             continue
+        check_mapping_format(mapping)
         commit_type, level = mapping.split(":")
-        if level not in bump_mapping:
-            bump_mapping[level] = []
-        bump_mapping[level].append(commit_type)
+        check_valid_level(level, mapping)
+        check_no_duplicate_commit_type(bump_mapping, commit_type, level)
+        bump_mapping.setdefault(level.strip(), []).append(commit_type.strip())
     return bump_mapping
+
+
+def check_mapping_format(mapping: str):
+    if ":" not in mapping:
+        raise ValueError(
+            f"Invalid bump mapping '{mapping}'. Expected format 'type:level'."
+        )
+
+
+def check_valid_level(level: str, mapping: str):
+    if level.strip() not in [b.name.lower() for b in BumpLevel]:
+        raise ValueError(f"Invalid bump level '{level}' in mapping '{mapping}'.")
+
+
+def check_no_duplicate_commit_type(bump_mapping: dict, commit_type: str, level: str):
+    for existing_level, commit_types in bump_mapping.items():
+        if commit_type.strip() in commit_types:
+            raise ValueError(
+                f"Duplicate commit type '{commit_type}' both mapped to "
+                f"'{existing_level}' and '{level}'."
+            )
