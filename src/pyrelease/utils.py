@@ -317,7 +317,7 @@ class GitRepository:
         """
         self._run_git_command(["add", "."], check=True)
         self._run_git_command(["commit", "-m", message], check=True)
-        result = self._run_git_command(["rev-parse", "HEAD"], check=True)
+        result = self._run_git_command(["rev-parse", "--short", "HEAD"], check=True)
         commit_hash = result.stdout.strip()
         return commit_hash
 

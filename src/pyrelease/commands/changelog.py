@@ -99,13 +99,16 @@ def generate_changelog_increment(
         changes = "\n".join(
             [format_commit(commit, commit_format) for commit in commits]
         )
+    mapping = {
+        "version": get_version_from_pyproject(args.path),
+        "changes": changes,
+        "remote_url": git.get_remote_url() or "",
+        "from_ref": from_ref,
+        "to_ref": to_ref,
+    }
     changelog = format_changelog(
         changelog_format=args.changelog_format or DEFAULT_CHANGELOG_FORMAT,
-        version=get_version_from_pyproject(args.path),
-        changes=changes,
-        remote_url=git.get_remote_url(),
-        from_ref=args.from_ref,
-        to_ref=args.to_ref,
+        **mapping,
     )
     return changelog
 

@@ -79,33 +79,37 @@ runs:
               echo "--conventional"
             fi
           )
-    - name: "Create Tag"
-      shell: "bash"
-      env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-      run: |
-        uv run --no-dev pyrelease tag ${{ inputs.tag-args }}
     - name: "Generate Changelog"
       shell: "bash"
+      if: ${{ steps.bump.outputs.old-version != steps.bump.outputs.new-version }}
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
+        short_sha=$(git rev-parse --short ${{ github.sha }})
         uv run --no-dev pyrelease changelog \
           --from-ref="v${{ steps.bump.outputs.old-version }}" \
-          --to-ref="v${{ steps.bump.outputs.new-version }}" \
+          --to-ref="$short_sha" \
           ${{ inputs.changelog-args }} \
           $(
             if [ "${{ inputs.conventional }}" == "true" ]; then
               echo "--conventional"
             fi
           )
-    - name: "Publish Release"
-      if: ${{ inputs.command == 'publish' }}
+    - name: "Commit Changes"
       shell: "bash"
+      if: ${{ steps.bump.outputs.old-version != steps.bump.outputs.new-version }}
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        uv publish
+        git add .
+        git commit -m "bump: v${{ steps.bump.outputs.old-version }} → v${{ steps.bump.outputs.new-version }}" || echo "No changes to commit"
+    - name: "Create Tag"
+      shell: "bash"
+      if: ${{ steps.bump.outputs.old-version != steps.bump.outputs.new-version }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        uv run --no-dev pyrelease tag ${{ inputs.tag-args }}
     - name: "Push Changes"
       if: ${{ inputs.push == 'true' && inputs.push-branch != '' }}
       shell: "bash"
@@ -113,3 +117,20 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
         git push origin ${{ inputs.push-branch }} --tags
+    - name: "Create Release"
+      if: ${{ inputs.command == 'release' && steps.bump.outputs.old-version != steps.bump.outputs.new-version }}
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        uv build
+        gh release create "v${{ steps.bump.outputs.new-version }}" \
+          "./dist/*" \
+          --notes-file CHANGELOG.md
+    - name: "Publish Release"
+      if: ${{ inputs.command == 'publish' && steps.bump.outputs.old-version != steps.bump.outputs.new-version }}
+      shell: "bash"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: |
+        uv publish
