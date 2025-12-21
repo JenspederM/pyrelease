@@ -39,8 +39,8 @@ def read_pyrelease_config(path: str) -> dict:
     return pyrelease_config
 
 
-def get_additional_args(config: dict, command_name: str) -> list[str]:
-    """Convert a configuration dictionary to a list of command-line arguments.
+def get_configured_args(config: dict, command_name: str) -> list[str]:
+    """Get additional command-line arguments from the pyrelease configuration.
 
     Args:
         config (dict): Pyrelease configuration dictionary
@@ -56,7 +56,7 @@ def get_additional_args(config: dict, command_name: str) -> list[str]:
     additional_args = config.get(command_name, {})
     for arg in global_args:
         arg_key = arg.lstrip("--")
-        if arg_key in config:
+        if arg_key in config and arg_key not in additional_args:
             additional_args[arg_key] = config[arg_key]
     args = []
     for key, value in additional_args.items():

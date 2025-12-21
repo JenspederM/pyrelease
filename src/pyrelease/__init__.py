@@ -4,7 +4,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from pyrelease.utils import add_global_args, get_additional_args, read_pyrelease_config
+from pyrelease.utils import add_global_args, get_configured_args, read_pyrelease_config
 
 
 def load_command_module(command_name: str):
@@ -55,7 +55,7 @@ def main(sys_args: list[str] | None = None):
         args = parser.parse_args(sys_args)
         pyrelease_config = read_pyrelease_config(args.path)
         if args.command in cli_commands:
-            additional_args = get_additional_args(pyrelease_config, args.command)
+            additional_args = get_configured_args(pyrelease_config, args.command)
             command_executor, command_parser = cli_commands[args.command]
             # sys_argv[0] is the command name, so we skip it
             command_args = additional_args + sys_args[1:]
