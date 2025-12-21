@@ -6,7 +6,7 @@ from pyrelease.utils import GitCommit, GitRepository
 
 DEFAULT_COMMIT_FORMAT = "- {message} ([{abbr_hash}]({remote_url}/{abbr_hash}))"
 DEFAULT_CHANGELOG_FORMAT = (
-    "{version} Changelog\n"
+    "# {version}\n"
     "=========================\n"
     "{changes}\n\n"
     "See all changes at: "
