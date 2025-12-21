@@ -11,7 +11,13 @@ dependencies = []
 pyrelease = "pyrelease:main"
 
 [dependency-groups]
-dev = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "ruff>=0.14.9", "ty>=0.0.4"]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.14.9",
+    "ty>=0.0.4",
+    "uv>=0.9.18",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.15,<0.10.0"]
