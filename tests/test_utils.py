@@ -1,6 +1,7 @@
 import pytest
 
 from pyrelease.utils import (
+    CustomFormatter,
     GitRepository,
     create_python_project,
     get_configured_args,
@@ -135,3 +136,81 @@ def test_get_version_from_pyproject_nonexistent_path(tmp_path_factory):
     non_existent_path = tmp_path / "nonexistent"
     with pytest.raises(FileNotFoundError):
         get_version_from_pyproject(non_existent_path)
+
+
+@pytest.mark.parametrize(
+    "format_string,expected_keys",
+    [
+        (
+            "{version} - {changes} - {remote_url} - {from_ref} - {to_ref}",
+            {"version", "changes", "remote_url", "from_ref", "to_ref"},
+        ),
+        ("Version: {version}\nChanges:\n{changes}", {"version", "changes"}),
+        ("{remote_url} | {from_ref} -> {to_ref}", {"remote_url", "from_ref", "to_ref"}),
+    ],
+)
+def test_custom_formatter_get_keys(format_string, expected_keys):
+    formatter = CustomFormatter(format_string)
+    keys = formatter.get_keys()
+    assert keys == expected_keys
+    formatter = CustomFormatter()
+    keys = formatter.get_keys(format_string=format_string)
+    assert keys == expected_keys
+
+
+def test_custom_formatter_no_string():
+    formatter = CustomFormatter()
+    with pytest.raises(ValueError, match="No format string provided."):
+        formatter.get_keys()
+
+
+def test_custom_formatter_check_keys():
+    format_string = "{version} - {changes}"
+    formatter = CustomFormatter(format_string)
+    mapping = {"version": "1.0.0", "changes": "Initial release"}
+    formatter.check_format_string(mapping=mapping)
+
+
+def test_custom_formatter_check_keys_no_string():
+    formatter = CustomFormatter()
+    with pytest.raises(ValueError, match="No format string provided."):
+        formatter.check_format_string({})
+
+
+def test_custom_formatter_check_keys_partial_used_mapping():
+    format_string = "{version}"
+    formatter = CustomFormatter(format_string)
+    formatter.check_format_string({"version": "value", "extra_key": "value"})
+
+
+def test_custom_formatter_check_keys_invalid_string():
+    format_string = "{version} - {changes}"
+    formatter = CustomFormatter(format_string)
+    with pytest.raises(ValueError) as exc_info:
+        formatter.check_format_string({"my_variable": "value"})
+        err = str(exc_info.value)
+        assert "Found invalid keys in format string: 'version', 'changes'." in err
+        assert "Valid keys are: 'my_variable'." in err
+
+
+def test_custom_formatter_check_keys_missing_mapping():
+    format_string = "{version} - {changes} - {date}"
+    formatter = CustomFormatter(format_string)
+    with pytest.raises(
+        ValueError, match="No mapping provided to check format string against."
+    ):
+        formatter.check_format_string({})
+
+
+def test_custom_formatter_format():
+    format_string = "Version: {version}, Changes: {changes}"
+    formatter = CustomFormatter(format_string)
+    result = formatter.format(version="1.0.0", changes="Initial release")
+    expected = "Version: 1.0.0, Changes: Initial release"
+    assert result == expected, "Formatted string does not match expected output"
+
+
+def test_custom_formatter_format_no_string():
+    formatter = CustomFormatter()
+    with pytest.raises(ValueError, match="No format string provided."):
+        formatter.format(version="1.0.0")

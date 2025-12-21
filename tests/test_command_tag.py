@@ -55,6 +55,26 @@ def test_tag_with_message_format(tmp_path_factory):
     assert message == "Release v0.1.0"
 
 
+def test_tag_with_invalid_message_format(tmp_path_factory):
+    path = tmp_path_factory.mktemp("repo")
+    create_python_project(path, git=True)
+    git = GitRepository(path)
+    git.commit("feat: add new feature")
+    with pytest.raises(
+        ValueError,
+        match="Found invalid keys in format string: 'nonexistent_key'.",
+    ):
+        main(
+            [
+                "tag",
+                "--message-format",
+                "Release v{nonexistent_key}",
+                "--path",
+                str(path),
+            ]
+        )
+
+
 def test_tag_dry_run(tmp_path_factory):
     path = tmp_path_factory.mktemp("repo")
     create_python_project(path, git=True)

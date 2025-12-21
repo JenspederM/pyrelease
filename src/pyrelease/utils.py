@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import string
 import subprocess
 import tomllib
 import warnings
@@ -11,6 +12,12 @@ from pathlib import Path
 
 
 def create_python_project(path: Path, git=False) -> None:
+    """Create a new Python project at the specified path.
+
+    Args:
+        path (Path): Path to create the Python project
+        git (bool): Whether to initialize a git repository
+    """
     if not shutil.which("uv"):
         raise RuntimeError(
             "The 'uv' command-line tool is required to create a Python project. "
@@ -106,7 +113,15 @@ def get_configured_args(config: dict, command_name: str) -> list[str]:
     return args
 
 
-def add_global_args(parser: argparse.ArgumentParser):
+def add_global_args(parser: argparse.ArgumentParser) -> argparse._ArgumentGroup:
+    """Add global arguments to the parser.
+
+    Args:
+        parser (argparse.ArgumentParser): Argument parser
+
+    Returns:
+        argparse._ArgumentGroup: The global arguments group
+    """
     global_args = parser.add_argument_group("global options")
     global_args.add_argument(
         "--project-name",
@@ -165,6 +180,67 @@ def get_version_from_pyproject(path: Path) -> str:
         return pyproject_data["project"]["version"]
     except KeyError:
         raise ValueError("project.version not found in pyproject.toml") from None
+
+
+class CustomFormatter(string.Formatter):
+    def __init__(self, string=None):
+        """Custom string formatter to extract keys from format strings.
+
+        Args:
+            string (str | None): Format string to analyze.
+        """
+        super().__init__()
+        self._string = string
+
+    def get_keys(self, format_string=None):
+        """Get the set of keys used in the format string.
+
+        Args:
+            format_string (str | None): Format string to analyze.
+                If None, uses the instance's string.
+
+        Returns:
+            set: Set of keys used in the format string.
+        """
+        if format_string is None:
+            if self._string is None:
+                raise ValueError("No format string provided.")
+            format_string = self._string
+        return {item[1] for item in self.parse(format_string) if item[1] is not None}
+
+    def format(self, /, *args, **kwargs) -> str:
+        if self._string is None:
+            raise ValueError("No format string provided.")
+        return super().format(self._string, *args, **kwargs)
+
+    def check_format_string(self, mapping: dict, format_string=None):
+        """Check if the format string contains unsupported keys.
+
+        Args:
+            mapping (dict): Mapping of supported keys.
+            format_string (str | None): Format string to analyze.
+                If None, uses the instance's string.
+
+        Raises:
+            ValueError: If unsupported keys are found in the format string.
+        """
+        if format_string is None:
+            if self._string is None:
+                raise ValueError("No format string provided.")
+            format_string = self._string
+        if not mapping:
+            raise ValueError("No mapping provided to check format string against.")
+        keys = self.get_keys(format_string=format_string)
+        valid_keys = set(mapping.keys())
+        unsupported_keys = keys - valid_keys
+        if unsupported_keys:
+            err = [
+                "Found invalid keys in format string:",
+                ", ".join(f"'{key}'" for key in unsupported_keys) + ".\n",
+                "Valid keys are:",
+                ", ".join(f"'{key}'" for key in valid_keys) + ".",
+            ]
+            raise ValueError(" ".join(err))
 
 
 class GitRepository:

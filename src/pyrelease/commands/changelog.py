@@ -2,7 +2,12 @@ import argparse
 from argparse import _SubParsersAction
 from dataclasses import asdict
 
-from pyrelease.utils import GitCommit, GitRepository, get_version_from_pyproject
+from pyrelease.utils import (
+    CustomFormatter,
+    GitCommit,
+    GitRepository,
+    get_version_from_pyproject,
+)
 
 DEFAULT_COMMIT_FORMAT = "- {message} ([{abbr_hash}]({remote_url}/commit/{abbr_hash}))"
 DEFAULT_CHANGELOG_FORMAT = (
@@ -78,7 +83,7 @@ def generate_changelog_increment(
     git: GitRepository, from_ref: str, to_ref: str, args: argparse.Namespace
 ) -> None:
     commits = git.get_commits_since(from_ref=from_ref, to_ref=to_ref)
-    format_str = args.commit_format or DEFAULT_COMMIT_FORMAT
+    commit_format = args.commit_format or DEFAULT_COMMIT_FORMAT
     if args.conventional:
         type_mapping = dict(
             item.split(":", 1)
@@ -88,11 +93,14 @@ def generate_changelog_increment(
         changes = generate_conventional_changelog(
             commits,
             type_mapping=type_mapping,
-            commit_format=format_str,
+            commit_format=commit_format,
         )
     else:
-        changes = "\n".join([format_str.format(**asdict(commit)) for commit in commits])
-    changelog = args.changelog_format.format(
+        changes = "\n".join(
+            [format_commit(commit, commit_format) for commit in commits]
+        )
+    changelog = format_changelog(
+        changelog_format=args.changelog_format or DEFAULT_CHANGELOG_FORMAT,
         version=get_version_from_pyproject(args.path),
         changes=changes,
         remote_url=git.get_remote_url(),
@@ -100,6 +108,19 @@ def generate_changelog_increment(
         to_ref=args.to_ref,
     )
     return changelog
+
+
+def format_commit(commit: GitCommit, commit_format: str) -> str:
+    formatter = CustomFormatter(commit_format)
+    mapping = asdict(commit)
+    formatter.check_format_string(mapping=mapping)
+    return formatter.format(**mapping)
+
+
+def format_changelog(changelog_format: str, **kwargs) -> str:
+    formatter = CustomFormatter(changelog_format)
+    formatter.check_format_string(mapping=kwargs)
+    return formatter.format(**kwargs)
 
 
 def generate_conventional_changelog(
@@ -113,10 +134,10 @@ def generate_conventional_changelog(
         commit_type = commit.message.split(":", 1)[0]
         section = type_mapping.get(commit_type)
         if section:
-            formatted_commit = commit_format.format(**asdict(commit))
+            formatted_commit = format_commit(commit, commit_format)
             sections[section].append(formatted_commit)
         else:
-            formatted_commit = commit_format.format(**asdict(commit))
+            formatted_commit = format_commit(commit, commit_format)
             other_changes.append(formatted_commit)
     changelog_sections: list[str] = []
     for section, entries in sections.items():

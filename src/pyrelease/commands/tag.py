@@ -1,7 +1,7 @@
 import argparse
 from argparse import _SubParsersAction
 
-from pyrelease.utils import GitRepository
+from pyrelease.utils import CustomFormatter, GitRepository
 
 
 def register(subparsers: _SubParsersAction):
@@ -29,12 +29,13 @@ def execute(args: argparse.Namespace):
         args.message = input("Enter tag message: ")
     git = GitRepository(args.path, dry_run=args.dry_run)
     version = f"v{args.project_version}"
+    formatter = CustomFormatter(args.message_format)
+    mapping = {"version": args.project_version}
     if args.message_format:
-        git.tag(version, args.message_format.format(version=args.project_version))
-    else:
-        git.tag(version, args.message)
+        formatter.check_format_string(mapping=mapping)
+    message = args.message or formatter.format(**mapping)
+    git.tag(version, message)
     if not args.silent:
-        msg = args.message or args.message_format.format(version=args.project_version)
         print(  # noqa: T201
-            f"Created git tag '{args.project_version}' with message: '{msg}'"
+            f"Created git tag '{args.project_version}' with message: '{message}'"
         )
