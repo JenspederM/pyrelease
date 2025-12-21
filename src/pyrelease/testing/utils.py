@@ -21,7 +21,9 @@ def create_python_project(path: Path, git=False) -> None:
                 UserWarning,
             )
             return
-        raise RuntimeError(f"Failed to create Python project at '{path}': {err}")
+        raise RuntimeError(
+            f"Failed to create Python project at '{path}': {err}"
+        )  # pragma: no cover - dont know how to trigger this in tests
     if git:
         create_git_repo(path)
 
@@ -62,7 +64,9 @@ def create_git_tag(path: Path, tag: str, message: str = "") -> None:
                 UserWarning,
             )
             return
-        raise RuntimeError(f"Failed to create git tag '{tag}' at '{path}': {err}")
+        raise RuntimeError(
+            f"Failed to create git tag '{tag}' at '{path}': {err}"
+        )  # pragma: no cover - dont know how to trigger this in tests
 
 
 def get_git_tags(path: Path) -> list[str]:
@@ -81,3 +85,23 @@ def get_git_tags(path: Path) -> list[str]:
         )
     tags = result.stdout.strip().splitlines()
     return tags
+
+
+def assert_version_bump(old_version: str, new_version: str, expected_bump: str) -> None:
+    old_parts = list(map(int, old_version.split(".")))
+    new_parts = list(map(int, new_version.split(".")))
+
+    if expected_bump == "major":
+        assert new_parts[0] == old_parts[0] + 1
+        assert new_parts[1] == 0
+        assert new_parts[2] == 0
+    elif expected_bump == "minor":
+        assert new_parts[0] == old_parts[0]
+        assert new_parts[1] == old_parts[1] + 1
+        assert new_parts[2] == 0
+    elif expected_bump == "patch":
+        assert new_parts[0] == old_parts[0]
+        assert new_parts[1] == old_parts[1]
+        assert new_parts[2] == old_parts[2] + 1
+    else:
+        raise ValueError(f"Unknown expected bump type: {expected_bump}")

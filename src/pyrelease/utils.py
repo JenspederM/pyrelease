@@ -88,7 +88,7 @@ def add_global_args(parser: argparse.ArgumentParser):
     )
     global_args.add_argument(
         "--path",
-        type=str,
+        type=Path,
         default=".",
         help="Path to the git repository",
     )
@@ -122,7 +122,12 @@ def get_version_from_pyproject(path: Path) -> str:
     Returns:
         str: Version string
     """
-    with open("pyproject.toml", "rb") as f:
+    if not path.exists():
+        raise FileNotFoundError(f"Path '{path}' does not exist.")
+    pyproject_path = path / "pyproject.toml"
+    if not pyproject_path.exists():
+        raise FileNotFoundError(f"pyproject.toml not found in path: {path}")
+    with open(pyproject_path, "rb") as f:
         pyproject_data = tomllib.load(f)
     return pyproject_data["project"]["version"]
 
@@ -207,13 +212,16 @@ class GitRepository:
         Returns:
             str: GitHub URL of the remote origin
         """
-        remote_url = subprocess.run(
+        result = subprocess.run(
             ["git", "config", "--get", "remote.origin.url"],
-            check=True,
+            check=False,
             capture_output=True,
             text=True,
             cwd=self.path,
-        ).stdout.strip()
+        )
+        if result.returncode != 0:
+            return None
+        remote_url = result.stdout.strip()
         if remote_url.endswith(".git"):
             remote_url = remote_url[:-4]
         if remote_url.startswith("git@github.com:"):
@@ -250,7 +258,7 @@ class GitRepository:
         remote_url = self.get_remote_url()
         commit_parts = [
             "{",
-            f'"remote_url": "{remote_url}",',
+            f'"remote_url": "{remote_url}",' if remote_url else None,
             '"abbr_hash": "%h",',
             '"commit_hash": "%H",',
             '"message": "%s",',
@@ -262,21 +270,25 @@ class GitRepository:
             '"committer_date": "%cI"',
             "}",
         ]
+        commit_parts = [part for part in commit_parts if part is not None]
         pretty_format = "".join(commit_parts)
+        between = "" if not from_ref else f"{from_ref}..{to_ref}"
         if from_ref:
-            from_ref = from_ref.strip()
-            between = f"{from_ref}..{to_ref}"
             cmd = ["git", "log", between, f"--pretty=format:{pretty_format}"]
         else:
-            between = ""
             cmd = ["git", "log", f"--pretty=format:{pretty_format}"]
         result = subprocess.run(
             cmd,
-            check=True,
+            check=False,
             capture_output=True,
             text=True,
             cwd=self.path,
         )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to get git commits for range '{between}': "
+                f"{result.stderr.strip()}"
+            )
         commit_strings = [
             line for line in result.stdout.strip().split("\n") if line.strip()
         ]

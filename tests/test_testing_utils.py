@@ -1,6 +1,7 @@
 import pytest
 
 from pyrelease.testing.utils import (
+    assert_version_bump,
     create_git_commit,
     create_git_repo,
     create_git_tag,
@@ -120,10 +121,26 @@ def test_get_git_tags_with_tags(tmp_path_factory):
     create_git_repo(tmp_path)
     (tmp_path / "file.txt").write_text("Sample content")
     create_git_commit(tmp_path, "Initial commit")
-    create_git_tag(tmp_path, "v0.1.0", "Initial tag")
+    create_git_tag(tmp_path, "v0.1.0")
     (tmp_path / "file2.txt").write_text("More content")
     create_git_commit(tmp_path, "Second commit")
     create_git_tag(tmp_path, "v0.2.0", "Second tag")
     tags = get_git_tags(tmp_path)
     assert "v0.1.0" in tags
     assert "v0.2.0" in tags
+
+
+def test_assert_version_bump():
+    # Major bump
+    assert_version_bump("1.2.3", "2.0.0", "major")
+    # Minor bump
+    assert_version_bump("1.2.3", "1.3.0", "minor")
+    # Patch bump
+    assert_version_bump("1.2.3", "1.2.4", "patch")
+    # Invalid bump
+    with pytest.raises(ValueError):
+        assert_version_bump("1.2.3", "1.2.3", "invalid")
+    with pytest.raises(AssertionError):
+        assert_version_bump("1.2.3", "1.2.5", "minor")
+    with pytest.raises(AssertionError):
+        assert_version_bump("1.2.3", "2.1.0", "patch")

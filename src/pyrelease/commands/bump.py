@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import warnings
 from argparse import _SubParsersAction
 from enum import Enum
 
@@ -61,26 +62,18 @@ def execute(args: argparse.Namespace):
     if args.conventional:
         bump = determine_bump_from_conventional_commits(args)
         if bump is None:
-            print(  # noqa: T201
+            warnings.warn(
                 "No conventional commits found since the last version. "
-                "Skipping version bump."
+                "Skipping version bump.",
+                UserWarning,
             )
             return
     else:
         bump = args.bump
     old_version = args.project_version
-    bump_command = ["uv", "version", "--bump", bump]
-    try:
-        output = subprocess.run(
-            bump_command + ["--dry-run"] if args.dry_run else bump_command,
-            check=args.dry_run is False,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(e.stderr.strip()) from e
+    output = bump_version(bump, args.path, args.dry_run)
     if not args.silent:
-        print((output.stdout or output.stderr or "").strip())  # noqa: T201
+        print(output)  # noqa: T201
     if not args.dry_run:
         new_version = get_version_from_pyproject(args.path)
         gh_output = os.environ.get("GITHUB_OUTPUT")
@@ -88,6 +81,23 @@ def execute(args: argparse.Namespace):
             with open(os.environ["GITHUB_OUTPUT"], "a") as gh_output_file:
                 gh_output_file.write(f"old-version={old_version}\n")
                 gh_output_file.write(f"new-version={new_version}\n")
+
+
+def bump_version(bump: str, path: str, dry_run: bool) -> str:
+    bump_command = ["uv", "version", "--bump", bump]
+    try:
+        output = subprocess.run(
+            bump_command + ["--dry-run"] if dry_run else bump_command,
+            check=dry_run is False,
+            capture_output=True,
+            text=True,
+            cwd=path,
+        )
+    except (
+        subprocess.CalledProcessError
+    ) as e:  # pragma: no cover - dont know how to trigger this in tests
+        raise RuntimeError(e.stderr.strip()) from e
+    return (output.stdout or output.stderr or "").strip()
 
 
 def determine_bump_from_conventional_commits(args: argparse.Namespace) -> str | None:
