@@ -31,6 +31,8 @@ def register(subparsers: _SubParsersAction):
         help="Type of version bump to apply",
         choices=[b.name.lower() for b in BumpLevel],
         required=False,
+        nargs="+",
+        action="append",
     )
     parser.add_argument(
         "--conventional",
@@ -68,6 +70,8 @@ def execute(args: argparse.Namespace):
                 UserWarning,
             )
             return
+        if args.bump:
+            bump += args.bump
     else:
         bump = args.bump
     old_version = args.project_version
@@ -83,8 +87,8 @@ def execute(args: argparse.Namespace):
                 gh_output_file.write(f"new-version={new_version}\n")
 
 
-def bump_version(bump: str, path: str, dry_run: bool) -> str:
-    bump_command = ["uv", "version", "--bump", bump]
+def bump_version(bump: list[str], path: str, dry_run: bool) -> str:
+    bump_command = ["uv", "version", *[item for b in bump for item in ["--bump", *b]]]
     try:
         output = subprocess.run(
             bump_command + ["--dry-run"] if dry_run else bump_command,
@@ -100,7 +104,9 @@ def bump_version(bump: str, path: str, dry_run: bool) -> str:
     return (output.stdout or output.stderr or "").strip()
 
 
-def determine_bump_from_conventional_commits(args: argparse.Namespace) -> str | None:
+def determine_bump_from_conventional_commits(
+    args: argparse.Namespace,
+) -> list[list[str]] | None:
     git = GitRepository(args.path)
     latest_tag = git.get_latest_tag()
     commits = git.get_commits_since(from_ref=latest_tag)
@@ -116,7 +122,7 @@ def determine_bump_from_conventional_commits(args: argparse.Namespace) -> str | 
                     < BumpLevel[highest_bump_level.upper()].value
                 ):
                     highest_bump_level = level
-    return highest_bump_level
+    return [[highest_bump_level]] if highest_bump_level else None
 
 
 def collect_bump_mapping(bump_mapping_str: str) -> dict[str, list[str]]:

@@ -166,6 +166,62 @@ def test_bump_manual_dry_run(tmp_path_factory):
     assert old_version == new_version
 
 
+def test_bump_manual_multiple_release_components(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_manual_bump_multiple_levels")
+    create_python_project(repo_path, git=True)
+    with pytest.raises(RuntimeError, match="Only one release version component"):
+        main(
+            [
+                "bump",
+                "--bump",
+                "minor",
+                "--bump",
+                "patch",
+                "--path",
+                str(repo_path),
+            ]
+        )
+
+
+def test_bump_manual_no_release_components(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_manual_bump_no_levels")
+    create_python_project(repo_path, git=True)
+    with pytest.raises(
+        RuntimeError, match="you also need to increase a release version component"
+    ):
+        main(
+            [
+                "bump",
+                "--bump",
+                "rc",
+                "--path",
+                str(repo_path),
+            ]
+        )
+
+
+def test_bump_manual_additional_component(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_manual_bump_no_levels")
+    create_python_project(repo_path, git=True)
+    old_version = get_version_from_pyproject(repo_path)
+    main(
+        [
+            "bump",
+            "--bump",
+            "minor",
+            "--bump",
+            "rc",
+            "--path",
+            str(repo_path),
+        ]
+    )
+    new_version = get_version_from_pyproject(repo_path)
+    assert old_version != new_version
+    assert new_version.endswith("rc1")
+    new_version_main = new_version.rsplit("rc", 1)[0]
+    assert_version_bump(old_version, new_version_main, "minor")
+
+
 def test_bump_conventional_no_valid_commits(tmp_path_factory):
     repo_path = tmp_path_factory.mktemp("repo_no_commits")
     create_python_project(repo_path, git=True)
@@ -204,6 +260,33 @@ def test_bump_conventional(tmp_path_factory):
     new_version = get_version_from_pyproject(repo_path)
     assert old_version != new_version
     assert_version_bump(old_version, new_version, "minor")
+
+
+def test_bump_conventional_additional_component(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_conventional_bump_additional")
+    create_python_project(repo_path, git=True)
+    # Create some conventional commits
+    create_git_commit(repo_path, "feat: add new feature")
+    (repo_path / "file.txt").write_text("Some content")
+    create_git_commit(repo_path, "fix: fix a bug")
+    old_version = get_version_from_pyproject(repo_path)
+    main(
+        [
+            "bump",
+            "--conventional",
+            "--bump-mapping",
+            "feat:minor,fix:patch",
+            "--bump",
+            "rc",
+            "--path",
+            str(repo_path),
+        ]
+    )
+    new_version = get_version_from_pyproject(repo_path)
+    assert old_version != new_version
+    assert new_version.endswith("rc1")
+    new_version_main = new_version.rsplit("rc", 1)[0]
+    assert_version_bump(old_version, new_version_main, "minor")
 
 
 def test_bump_conventional_dry_run(tmp_path_factory):

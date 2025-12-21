@@ -59,14 +59,15 @@ def main(sys_args: list[str] | None = None):
             command_executor, command_parser = cli_commands[args.command]
             # sys_argv[0] is the command name, so we skip it
             command_args = additional_args + sys_args[1:]
+            known_args, _ = command_parser.parse_known_args(command_args)
             if args.debug:  # pragma: no cover - only for debugging
                 print(  # noqa: T201
                     f"Debug: Executing command '{args.command}':\n"
                     f"    sys_args={sys_args},\n"
                     f"    additional_args={additional_args},\n"
                     f"    command_args={command_args}\n",
+                    f"    known_args={known_args}\n",
                 )
-            known_args, _ = command_parser.parse_known_args(command_args)
             command_executor(known_args)
         else:
             parser.print_help()
