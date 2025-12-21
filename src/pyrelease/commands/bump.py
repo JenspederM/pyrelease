@@ -108,8 +108,11 @@ def determine_bump_from_conventional_commits(
     args: argparse.Namespace,
 ) -> list[list[str]] | None:
     git = GitRepository(args.path)
-    latest_tag = git.get_latest_tag()
-    commits = git.get_commits_since(from_ref=latest_tag)
+    tags = git.get_tags(latest=True)
+    if not tags:
+        commits = git.get_commits_since()
+    else:
+        commits = git.get_commits_since(from_ref=tags[0][0])
     bump_mapping = collect_bump_mapping(args.conventional_bump_mapping)
     highest_bump_level = None
     for commit in commits:

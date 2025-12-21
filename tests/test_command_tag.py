@@ -3,11 +3,7 @@ import sys
 import pytest
 
 from pyrelease import main
-from pyrelease.testing.utils import (
-    create_git_commit,
-    create_python_project,
-    get_git_tags,
-)
+from pyrelease.utils import GitRepository, create_python_project
 
 
 @pytest.mark.skipif(
@@ -30,9 +26,11 @@ def test_tag_with_input(monkeypatch):
 def test_tag_with_message(tmp_path_factory):
     path = tmp_path_factory.mktemp("repo")
     create_python_project(path, git=True)
-    create_git_commit(path, "feat: add new feature")
+    git = GitRepository(path)
+    git.commit("feat: add new feature")
     main(["tag", "--message", "Direct tag message", "--path", str(path)])
-    tag, message = get_git_tags(path)[0]
+    git = GitRepository(path)
+    tag, message = git.get_tags()[0]
     assert "v0.1.0" in tag
     assert message == "Direct tag message"
 
@@ -40,7 +38,8 @@ def test_tag_with_message(tmp_path_factory):
 def test_tag_with_message_format(tmp_path_factory):
     path = tmp_path_factory.mktemp("repo")
     create_python_project(path, git=True)
-    create_git_commit(path, "feat: add new feature")
+    git = GitRepository(path)
+    git.commit("feat: add new feature")
     main(
         [
             "tag",
@@ -50,7 +49,8 @@ def test_tag_with_message_format(tmp_path_factory):
             str(path),
         ]
     )
-    tag, message = get_git_tags(path)[0]
+    git = GitRepository(path)
+    tag, message = git.get_tags()[0]
     assert "v0.1.0" in tag
     assert message == "Release v0.1.0"
 
@@ -58,7 +58,9 @@ def test_tag_with_message_format(tmp_path_factory):
 def test_tag_dry_run(tmp_path_factory):
     path = tmp_path_factory.mktemp("repo")
     create_python_project(path, git=True)
-    create_git_commit(path, "feat: add new feature")
+    git = GitRepository(path)
+    git.commit("feat: add new feature")
     main(["tag", "--message", "My message", "--dry-run", "--path", str(path)])
-    tags = get_git_tags(path)
+    git = GitRepository(path)
+    tags = git.get_tags()
     assert len(tags) == 0

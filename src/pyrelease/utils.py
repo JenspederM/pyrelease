@@ -2,10 +2,42 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import tomllib
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
+
+
+def create_python_project(path: Path, git=False) -> None:
+    if not shutil.which("uv"):
+        raise RuntimeError(
+            "The 'uv' command-line tool is required to create a Python project. "
+            "Please install it via 'pip install uv'."
+        )
+    if not path.exists():
+        raise FileNotFoundError(f"Path '{path}' does not exist.")
+    result = subprocess.run(
+        ["uv", "init", "--package", "--vcs", "none"],
+        cwd=path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        err = result.stderr.strip()
+        if "is already initialized" in err:
+            warnings.warn(
+                f"Python project at '{path}' is already initialized.",
+                UserWarning,
+            )
+            return
+        raise RuntimeError(
+            f"Failed to create Python project at '{path}': {err}"
+        )  # pragma: no cover - dont know how to trigger this in tests
+    if git:
+        GitRepository(path, init=True)
 
 
 def read_pyrelease_config(path: str) -> dict:
@@ -129,17 +161,32 @@ def get_version_from_pyproject(path: Path) -> str:
         raise FileNotFoundError(f"pyproject.toml not found in path: {path}")
     with open(pyproject_path, "rb") as f:
         pyproject_data = tomllib.load(f)
-    return pyproject_data["project"]["version"]
+    try:
+        return pyproject_data["project"]["version"]
+    except KeyError:
+        raise ValueError("project.version not found in pyproject.toml") from None
 
 
 class GitRepository:
-    def __init__(self, path: str = ".", dry_run: bool = False):
-        self.is_git_repo(path)
-        self.dry_run = dry_run
+    def __init__(
+        self,
+        path: Path = Path("."),
+        init=False,
+        init_user=None,
+        init_email=None,
+        dry_run: bool = False,
+    ):
+        if not Path(path).exists():
+            raise FileNotFoundError(f"Path '{path}' does not exist.")
         self.path = path
+        self.dry_run = dry_run
+        if init and not self._is_git_repo():
+            self.init(
+                user=init_user or "PyRelease",
+                email=init_email or "pyrelease@example.com",
+            )
 
-    @staticmethod
-    def is_git_repo(path: str) -> bool:
+    def _is_git_repo(self) -> bool:
         """Check if a given path is a git repository.
 
         Args:
@@ -148,94 +195,146 @@ class GitRepository:
         Returns:
             bool: True if the path is a git repository, False otherwise
         """
-        try:
-            subprocess.run(
-                ["git", "rev-parse"],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                cwd=path,
-            )
-            return True
-        except subprocess.CalledProcessError:
-            return False
+        result = self._run_git_command(["rev-parse"])
+        return result.returncode == 0
 
-    def create_version_tag(
-        self,
-        version: str,
-        message: str = "",
-    ) -> str:
-        """Create a new version tag in the git repository.
+    def _run_git_command(
+        self, command: list[str], check: bool = False
+    ) -> subprocess.CompletedProcess[str]:
+        """Run a git command in the repository.
 
         Args:
-            version (str): Version string for the tag
-            message (str): Tag message
+            command (list[str]): Git command and arguments
+            check (bool): Whether to raise an exception on non-zero exit
 
         Returns:
-            str: Created tag name
-        """
-        version = f"v{version}"
-        tag_cmd = ["git", "tag", "-a", version]
-        if not message:
-            message = input(f"Enter tag message for version {version}: ")
-            tag_cmd.extend(["-m", message])
-        else:
-            tag_cmd.extend(["-m", message])
-        if not self.dry_run:
-            try:
-                subprocess.run(tag_cmd, check=True, cwd=self.path)
-            except subprocess.CalledProcessError as e:
-                raise RuntimeError(f"Failed to create git tag '{version}': {e}") from e
-        return version
-
-    def get_latest_tag(self) -> str | None:
-        """Get the latest git tag in the repository.
-
-        Returns:
-            str | None: Latest git tag or None if no tags exist
-        """
-        try:
-            tag = subprocess.run(
-                ["git", "describe", "--tags", "--abbrev=0"],
-                check=True,
-                capture_output=True,
-                text=True,
-                cwd=self.path,
-            ).stdout.strip()
-            return tag
-        except subprocess.CalledProcessError:
-            return None
-
-    def get_remote_url(self) -> str:
-        """Get the remote URL of the remote origin of the git repository.
-
-        Returns:
-            str: GitHub URL of the remote origin
+            subprocess.CompletedProcess: Completed process object
         """
         result = subprocess.run(
-            ["git", "config", "--get", "remote.origin.url"],
-            check=False,
+            ["git"] + command,
+            check=check,
             capture_output=True,
             text=True,
             cwd=self.path,
         )
+        return result
+
+    def init(self, user: str = "PyRelease", email: str = "pyrelease@example.com"):
+        """Initialize a git repository at the specified path.
+
+        Args:
+            user (str): Git user name
+            email (str): Git user email
+        """
+        self._run_git_command(["init"], check=True)
+        self._run_git_command(["config", "user.name", user], check=True)
+        self._run_git_command(["config", "user.email", email], check=True)
+
+    def commit(self, message: str) -> str:
+        """Create a new git commit in the repository.
+
+        Args:
+            message (str): Commit message
+
+        Returns:
+            str: Created commit hash
+        """
+        self._run_git_command(["add", "."], check=True)
+        self._run_git_command(["commit", "-m", message], check=True)
+        result = self._run_git_command(["rev-parse", "HEAD"], check=True)
+        commit_hash = result.stdout.strip()
+        return commit_hash
+
+    def tag(self, tag: str, message: str = "") -> None:
+        """Create a new git tag in the repository.
+
+        Args:
+            tag (str): Tag name
+            message (str): Tag message
+
+        Raises:
+            RuntimeError: If tag creation fails for reasons other than existing tag
+        """
+        tag_cmd = ["tag", "-a", tag]
+        if message:
+            tag_cmd.extend(["-m", message])
+        else:
+            tag_cmd.extend(["-m", f"Tag {tag}"])
+        if self.dry_run:
+            return
+        result = self._run_git_command(tag_cmd)
         if result.returncode != 0:
+            err = result.stderr.strip()
+            if "already exists" in err:
+                warnings.warn(
+                    f"Tag '{tag}' already exists at '{self.path}'.",
+                    UserWarning,
+                )
+                return
+            raise RuntimeError(
+                f"Failed to create git tag '{tag}' at '{self.path}': {err}"
+            )  # pragma: no cover - dont know how to trigger this in tests
+
+    def get_tags(self, latest: bool = False) -> list[list[str]]:
+        """Get a list of git tags in the repository.
+
+        Args:
+            latest (bool): Whether to return only the latest tag
+
+        Returns:
+            list[list[str]]: List of git tags with their messages
+        """
+        result = self._run_git_command(
+            ["tag", "-l", "--format=%(refname:short) %(contents)"]
+        )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to get git tags at '{self.path}': {result.stderr.strip()}"
+            )  # pragma: no cover - dont know how to trigger this in tests
+        tags = [
+            [part.strip() for part in line.split(" ", 1)]
+            for line in result.stdout.strip().splitlines()
+            if line
+        ]
+        if latest and tags:
+            return [tags[0]]
+        return tags
+
+    def get_remote_url(self) -> str | None:
+        """Get the remote URL of the remote origin of the git repository.
+
+        Returns:
+            str | None: GitHub URL of the remote origin or None if not set
+        """
+        result = self._run_git_command(["config", "--get", "remote.origin.url"])
+        if result.returncode != 0:
+            warnings.warn(
+                f"Failed to get remote URL for git repository at '{self.path}': "
+                f"{result.stderr.strip()}",
+                UserWarning,
+            )
             return None
+
         remote_url = result.stdout.strip()
+        if not remote_url.startswith(
+            (
+                "https://",
+                "git@github.com:",
+                "http://",
+            )
+        ):
+            raise ValueError(
+                f"Unsupported remote URL format: '{result.stdout.strip()}'. "
+                "remote.origin.url must start with 'git@github.com:' or 'https://'.",
+            )
+
         if remote_url.endswith(".git"):
             remote_url = remote_url[:-4]
         if remote_url.startswith("git@github.com:"):
             remote_url = remote_url.replace("git@github.com:", "https://github.com/")
-        elif remote_url.startswith("ssh://git@"):
-            remote_url = remote_url.replace("ssh://git@", "https://")
         elif remote_url.startswith("http://"):
             remote_url = remote_url.replace("http://", "https://")
-        else:
-            raise ValueError(
-                f"Unsupported remote URL format: {remote_url}. ",
-                "remote.origin.url must start with ",
-                "'git@github.com:', 'ssh://git@', or 'http://'.",
-            )
+
         return remote_url
 
     def get_commits_since(

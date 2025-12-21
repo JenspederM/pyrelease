@@ -28,16 +28,11 @@ def execute(args: argparse.Namespace):
     if not args.message_format and not args.message:
         args.message = input("Enter tag message: ")
     git = GitRepository(args.path, dry_run=args.dry_run)
+    version = f"v{args.project_version}"
     if args.message_format:
-        git.create_version_tag(
-            version=args.project_version,
-            message=args.message_format.format(version=args.project_version),
-        )
+        git.tag(version, args.message_format.format(version=args.project_version))
     else:
-        git.create_version_tag(
-            version=args.project_version,
-            message=args.message,
-        )
+        git.tag(version, args.message)
     if not args.silent:
         msg = args.message or args.message_format.format(version=args.project_version)
         print(  # noqa: T201

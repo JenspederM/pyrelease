@@ -2,12 +2,31 @@ import pytest
 
 from pyrelease import main
 from pyrelease.commands.bump import collect_bump_mapping
-from pyrelease.testing.utils import (
-    assert_version_bump,
-    create_git_commit,
+from pyrelease.utils import (
+    GitRepository,
     create_python_project,
+    get_version_from_pyproject,
 )
-from pyrelease.utils import get_version_from_pyproject
+
+
+def assert_version_bump(old_version: str, new_version: str, expected_bump: str) -> None:
+    old_parts = list(map(int, old_version.split(".")))
+    new_parts = list(map(int, new_version.split(".")))
+
+    if expected_bump == "major":
+        assert new_parts[0] == old_parts[0] + 1
+        assert new_parts[1] == 0
+        assert new_parts[2] == 0
+    elif expected_bump == "minor":
+        assert new_parts[0] == old_parts[0]
+        assert new_parts[1] == old_parts[1] + 1
+        assert new_parts[2] == 0
+    elif expected_bump == "patch":
+        assert new_parts[0] == old_parts[0]
+        assert new_parts[1] == old_parts[1]
+        assert new_parts[2] == old_parts[2] + 1
+    else:
+        raise ValueError(f"Unknown expected bump type: {expected_bump}")
 
 
 def test_bump_mapping_str_empty():
@@ -244,10 +263,11 @@ def test_bump_conventional_no_valid_commits(tmp_path_factory):
 def test_bump_conventional(tmp_path_factory):
     repo_path = tmp_path_factory.mktemp("repo_conventional_bump")
     create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
     # Create some conventional commits
-    create_git_commit(repo_path, "feat: add new feature")
+    git.commit("feat: add new feature")
     (repo_path / "file.txt").write_text("Some content")
-    create_git_commit(repo_path, "fix: fix a bug")
+    git.commit("fix: fix a bug")
     old_version = get_version_from_pyproject(repo_path)
     main(
         [
@@ -267,10 +287,11 @@ def test_bump_conventional(tmp_path_factory):
 def test_bump_conventional_additional_component(tmp_path_factory):
     repo_path = tmp_path_factory.mktemp("repo_conventional_bump_additional")
     create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
     # Create some conventional commits
-    create_git_commit(repo_path, "feat: add new feature")
+    git.commit("feat: add new feature")
     (repo_path / "file.txt").write_text("Some content")
-    create_git_commit(repo_path, "fix: fix a bug")
+    git.commit("fix: fix a bug")
     old_version = get_version_from_pyproject(repo_path)
     main(
         [
@@ -294,10 +315,11 @@ def test_bump_conventional_additional_component(tmp_path_factory):
 def test_bump_conventional_dry_run(tmp_path_factory):
     repo_path = tmp_path_factory.mktemp("repo_conventional_bump_dry_run")
     create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
     # Create some conventional commits
-    create_git_commit(repo_path, "feat: add new feature")
+    git.commit("feat: add new feature")
     (repo_path / "file.txt").write_text("Some content")
-    create_git_commit(repo_path, "fix: fix a bug")
+    git.commit("fix: fix a bug")
     old_version = get_version_from_pyproject(repo_path)
     main(
         [
@@ -317,10 +339,11 @@ def test_bump_conventional_dry_run(tmp_path_factory):
 def test_bump_conventional_custom_mapping(tmp_path_factory):
     repo_path = tmp_path_factory.mktemp("repo_conventional_bump_custom_mapping")
     create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
     # Create some conventional commits
-    create_git_commit(repo_path, "chore: update dependencies")
+    git.commit("chore: update dependencies")
     (repo_path / "file.txt").write_text("Some content")
-    create_git_commit(repo_path, "refactor: improve code structure")
+    git.commit("refactor: improve code structure")
     old_version = get_version_from_pyproject(repo_path)
     main(
         [
@@ -340,10 +363,11 @@ def test_bump_conventional_custom_mapping(tmp_path_factory):
 def test_bump_conventional_no_conventional_commits(tmp_path_factory):
     repo_path = tmp_path_factory.mktemp("repo_no_conventional_commits")
     create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
     # Create some non-conventional commits
-    create_git_commit(repo_path, "Initial commit")
+    git.commit("Initial commit")
     (repo_path / "file.txt").write_text("Some content")
-    create_git_commit(repo_path, "Update file.txt")
+    git.commit("Update file.txt")
     with pytest.warns(
         UserWarning,
         match="No conventional commits found since the last version.",
@@ -359,3 +383,82 @@ def test_bump_conventional_no_conventional_commits(tmp_path_factory):
                 str(repo_path),
             ]
         )
+
+
+def test_bump_conventional_no_tags(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_conventional_bump_no_tags")
+    create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
+    # Create some conventional commits
+    git.commit("feat: add new feature")
+    (repo_path / "file.txt").write_text("Some content")
+    git.commit("fix: fix a bug")
+    old_version = get_version_from_pyproject(repo_path)
+    main(
+        [
+            "bump",
+            "--conventional",
+            "--conventional-bump-mapping",
+            "feat:minor,fix:patch",
+            "--path",
+            str(repo_path),
+        ]
+    )
+    new_version = get_version_from_pyproject(repo_path)
+    assert old_version != new_version
+    assert_version_bump(old_version, new_version, "minor")
+
+
+def test_bump_conventional_multiple_tags(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_conventional_bump_multiple_tags")
+    create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
+    # Create some conventional commits and tags
+    git.commit("feat: add new feature")
+    git.tag("v0.1.0", "First release")
+    (repo_path / "file.txt").write_text("Some content")
+    git.commit("fix: fix a bug")
+    git.tag("v0.2.0", "Second release")
+    (repo_path / "file2.txt").write_text("More content")
+    git.commit("fix: another bug fix")
+    old_version = get_version_from_pyproject(repo_path)
+    main(
+        [
+            "bump",
+            "--conventional",
+            "--conventional-bump-mapping",
+            "feat:minor,fix:patch",
+            "--path",
+            str(repo_path),
+        ]
+    )
+    new_version = get_version_from_pyproject(repo_path)
+    assert old_version != new_version
+    assert_version_bump(old_version, new_version, "patch")
+
+
+def test_bump_conventional_no_commits_since_tag(tmp_path_factory):
+    repo_path = tmp_path_factory.mktemp("repo_conventional_bump_no_commits_since_tag")
+    create_python_project(repo_path, git=True)
+    git = GitRepository(repo_path)
+    # Create some conventional commits and a tag
+    git.commit("feat: add new feature")
+    git.tag("v0.1.0", "First release")
+    old_version = get_version_from_pyproject(repo_path)
+    with pytest.warns(
+        UserWarning,
+        match="No conventional commits found since the last version.",
+    ):
+        main(
+            [
+                "bump",
+                "--conventional",
+                "--conventional-bump-mapping",
+                "feat:minor,fix:patch",
+                "--dry-run",
+                "--path",
+                str(repo_path),
+            ]
+        )
+    new_version = get_version_from_pyproject(repo_path)
+    assert old_version == new_version

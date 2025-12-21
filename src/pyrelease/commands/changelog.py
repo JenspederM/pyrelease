@@ -2,15 +2,15 @@ import argparse
 from argparse import _SubParsersAction
 from dataclasses import asdict
 
-from pyrelease.utils import GitCommit, GitRepository
+from pyrelease.utils import GitCommit, GitRepository, get_version_from_pyproject
 
-DEFAULT_COMMIT_FORMAT = "- {message} ([{abbr_hash}]({remote_url}/{abbr_hash}))"
+DEFAULT_COMMIT_FORMAT = "- {message} ([{abbr_hash}]({remote_url}/commit/{abbr_hash}))"
 DEFAULT_CHANGELOG_FORMAT = (
     "# {version}\n"
     "=========================\n"
     "{changes}\n\n"
     "See all changes at: "
-    "[{from_ref}..{to_ref}]({remote_url}/compare/{from_ref}...{to_ref})"
+    "[{from_ref}..{to_ref}]({remote_url}/compare/{from_ref}..{to_ref})"
 )
 
 
@@ -23,7 +23,7 @@ def register(subparsers: _SubParsersAction):
         "--from-ref",
         type=str,
         help="Commit hash to get commits since",
-        default="origin/main",
+        default="",
     )
     parser.add_argument(
         "--to-ref",
@@ -66,8 +66,18 @@ def register(subparsers: _SubParsersAction):
 
 def execute(args: argparse.Namespace):
     git = GitRepository(args.path)
-    latest_tag = git.get_latest_tag()
-    commits = git.get_commits_since(from_ref=args.from_ref, to_ref=args.to_ref)
+    changelog = generate_changelog_increment(git, args.from_ref, args.to_ref, args)
+    if not args.silent:
+        print(changelog)  # noqa: T201
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(changelog)
+
+
+def generate_changelog_increment(
+    git: GitRepository, from_ref: str, to_ref: str, args: argparse.Namespace
+) -> None:
+    commits = git.get_commits_since(from_ref=from_ref, to_ref=to_ref)
     format_str = args.commit_format or DEFAULT_COMMIT_FORMAT
     if args.conventional:
         type_mapping = dict(
@@ -83,17 +93,13 @@ def execute(args: argparse.Namespace):
     else:
         changes = "\n".join([format_str.format(**asdict(commit)) for commit in commits])
     changelog = args.changelog_format.format(
-        version=latest_tag,
+        version=get_version_from_pyproject(args.path),
         changes=changes,
         remote_url=git.get_remote_url(),
         from_ref=args.from_ref,
         to_ref=args.to_ref,
     )
-    if not args.silent:
-        print(changelog)  # noqa: T201
-    if args.output:
-        with open(args.output, "w") as f:
-            f.write(changelog)
+    return changelog
 
 
 def generate_conventional_changelog(
